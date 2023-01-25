@@ -20,7 +20,9 @@ int pin7 = 7;
 int pin8 = 8;
 
 enum State {OFF, ON, RUN, SLEEP, DIAGNOSTIC};
+
 State state = OFF;
+State state_previous = OFF;
 
 int N_diag = 5;
 
@@ -58,25 +60,34 @@ void setup() {
 void loop() {
   switch(state){
     case OFF:
+      Serial.println("ENTER OFF STATE");
+      state_previous = OFF;
       break;
       
     case ON:
+      Serial.println("ENTER ON STATE");
+      state_previous = ON;
       blink_LED(red_LED, 10, 1);
       break;
 
     case RUN:
+      Serial.println("ENTER RUN STATE");
+      state_previous = RUN;
       fade_LED(green_LED, 6);
-      blink_LED(green_LED, 1, 2);
-      state = OFF;
+      blink_LED(green_LED, 1, 2); 
       break;
 
     case SLEEP:
+      Serial.println("ENTER SLEEP STATE");
+      state_previous = SLEEP;
       blink_LED(blue_LED, 4, 3);
       fade_LED(blue_LED, 1);
       state = OFF;
       break;
 
     case DIAGNOSTIC:
+      Serial.println("ENTER DIAGNOSTIC STATE");
+      state_previous = DIAGNOSTIC;
       blink_LED(red_LED, 2, N_diag);
       state = OFF;
       break;
@@ -88,18 +99,27 @@ void blink_LED(int pin, int freq, int iterations){
   int delay_val = 0;
   int i;
   for(i = 0; i < iterations; i++){
+    if (state != state_previous) {
+      Serial.println(state);
+      break;  
+    }
     delay_val = 1000 / (2 * freq);
     digitalWrite(pin, HIGH);
     delay(delay_val);
     digitalWrite(pin, LOW);
     delay(delay_val);
-  }
+  } 
+  return;
 }
 
 void fade_LED(int analog_pin, int time_constant){
   int brightness = 255;
   int step_time = (int) (time_constant * 1000 / 254);
   while (brightness > 3) {
+    if (state != state_previous) {
+      analogWrite(analog_pin, 0);
+      return;  
+    }
     analogWrite(analog_pin, brightness);
     brightness -= 1;
     delay(step_time);
