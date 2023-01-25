@@ -22,7 +22,7 @@ int pin8 = 8;
 enum State {OFF, ON, RUN, SLEEP, DIAGNOSTIC};
 State state = OFF;
 
-int N_diag = 8;
+int N_diag = 5;
 
 //LED pattern functions
 void blink_LED(int analog_pin, int freq, int iterations);
@@ -65,7 +65,9 @@ void loop() {
       break;
 
     case RUN:
-      blink_LED(blue_LED, 2, 1);
+      fade_LED(green_LED, 6);
+      blink_LED(green_LED, 1, 2);
+      state = OFF;
       break;
 
     case SLEEP:
