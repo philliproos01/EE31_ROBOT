@@ -22,6 +22,8 @@ int pin8 = 8;
 enum State {OFF, ON, RUN, SLEEP, DIAGNOSTIC};
 State state = OFF;
 
+int N_diag = 8;
+
 //LED pattern functions
 void blink_LED(int analog_pin, int freq, int iterations);
 void fade_LED(int pin, int time_constant);
@@ -56,23 +58,25 @@ void setup() {
 void loop() {
   switch(state){
     case OFF:
-      blink_LED(green_LED, 2, 3);
       break;
       
     case ON:
-      blink_LED(red_LED, 2, 3);
+      blink_LED(red_LED, 10, 1);
       break;
 
     case RUN:
-      blink_LED(blue_LED, 2, 3);
+      blink_LED(blue_LED, 2, 1);
       break;
 
     case SLEEP:
-      blink_LED(blue_LED, 20, 3);
+      blink_LED(blue_LED, 4, 3);
+      fade_LED(blue_LED, 1);
+      state = OFF;
       break;
 
     case DIAGNOSTIC:
-      blink_LED(green_LED, 20, 3);
+      blink_LED(red_LED, 2, N_diag);
+      state = OFF;
       break;
     
   } 
@@ -82,7 +86,7 @@ void blink_LED(int pin, int freq, int iterations){
   int delay_val = 0;
   int i;
   for(i = 0; i < iterations; i++){
-    delay_val = 1000/(2*freq);
+    delay_val = 1000 / (2 * freq);
     digitalWrite(pin, HIGH);
     delay(delay_val);
     digitalWrite(pin, LOW);
@@ -92,20 +96,14 @@ void blink_LED(int pin, int freq, int iterations){
 
 void fade_LED(int analog_pin, int time_constant){
   int brightness = 255;
-  float time_val = 0;
-  float delay_val = 5;
-  while(1){
+  int step_time = (int) (time_constant * 1000 / 254);
+  while (brightness > 3) {
     analogWrite(analog_pin, brightness);
-    delay(delay_val); //milliseconds
-    time_val = time_val + delay_val/1000;
-    brightness = 255*exp(-time_constant*time_val);
-    Serial.println(brightness);
-    if(brightness < 3){
-      break;
-    }
+    brightness -= 1;
+    delay(step_time);
   }
+  analogWrite(analog_pin, 0);
 }
-
 
 //interrupt functions
 
