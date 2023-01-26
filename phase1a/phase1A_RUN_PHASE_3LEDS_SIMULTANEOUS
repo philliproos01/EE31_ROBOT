@@ -1,7 +1,7 @@
 
 
 bool red_on = false;
-void switch1_open(int blue_pin, int green_pin, int blue_freq, int red_pin, bool red_on);
+void switch1_open(int blue_pin, int green_pin, int blue_freq, int red_pin, bool red_on, int max_brightness);
 
 //input pins
 int pin0 = 0;
@@ -95,9 +95,10 @@ void loop() {
       state_previous = DIAGNOSTIC;
 //      blink_LED(red_LED, 2, N_diag);
 //      
-      red_on = true;
+      
       //test 
-      switch1_open(blue_LED, green_LED, 1, red_LED, red_on);
+      red_on = true;
+      switch1_open(blue_LED, green_LED, 1, red_LED, red_on, 255);
       state = OFF;
       break;
       
@@ -179,7 +180,7 @@ void blink_LED(int pin, int freq, int iterations){
   return;
 }
 
-void switch1_open(int blue_pin, int green_pin, int blue_freq, int red_pin, bool red_on){
+void switch1_open(int blue_pin, int green_pin, int blue_freq, int red_pin, bool red_on, int max_brightness){
   int time_constant = 6;
   unsigned long start_millis;  
   unsigned long current_millis;
@@ -187,19 +188,23 @@ void switch1_open(int blue_pin, int green_pin, int blue_freq, int red_pin, bool 
   unsigned long current_micros;
   const unsigned long period = 1000000 / blue_freq; 
 
-  if(red_on == true){  
-    analogWrite(red_pin, 255);
-  }
+  
 
   int check_fading_done = 0; //boolean that checked whether the green LED is done fading (so it can start blinking)
   int check = 1;
   int check2 = 1;
-  int brightness = 255;
+  int brightness = max_brightness;
+
+  
   
   //int step_time = (int) (time_constant * 1000 / 254);
-  const unsigned long step_time = time_constant * 1000 / 255;
+  const unsigned long step_time = time_constant * 1000 / max_brightness;
   int counter = 0;
   int counter2 = 0;
+
+  if(red_on == true){  
+    analogWrite(red_pin, 200);
+  }
   
   start_millis = millis();
   while (1) {
@@ -215,17 +220,10 @@ void switch1_open(int blue_pin, int green_pin, int blue_freq, int red_pin, bool 
       }
     }
 
-    if(counter >= 255){
-      Serial.println("DONE FADING");
-      check_fading_done = 1;
-      counter = 0;
-    }
-    
-
     if(check_fading_done == 1){
       current_millis = millis();
-      if(current_millis-start_millis >= 500){
-        analogWrite(green_pin, 125-check2*125);
+      if(current_millis-start_millis >= 1000){
+        analogWrite(green_pin, max_brightness/2 + check2*max_brightness/2);
         check2 = -check2;
         counter2 += 1;
         start_millis = millis();
@@ -233,11 +231,26 @@ void switch1_open(int blue_pin, int green_pin, int blue_freq, int red_pin, bool 
       }
     }
 
-    if(counter2 >= 2*2){
+    if(counter >= max_brightness){
+      Serial.println("DONE FADING");
+      check_fading_done = 1;
+      counter = 0;
+      brightness = max_brightness;
+      check2 = 1;
+      start_millis = millis();
+    }
+    
+    if(counter2 >= 5){
       Serial.println("DONE BLINKING");
       check_fading_done = 0;
       counter2 = 0;
+      start_millis = millis();
     }
+
+
+    
+
+    
 
     //state exit condition
     if (state != state_previous) {
@@ -250,15 +263,15 @@ void switch1_open(int blue_pin, int green_pin, int blue_freq, int red_pin, bool 
     //blue LED blinking
     current_micros = micros();
     if(current_micros-start_micros >= period){
-      Serial.println(125 + check*125);
-      analogWrite(blue_pin, 125 + check*125);
+      Serial.println(max_brightness/2 + check*max_brightness/2);
+      analogWrite(blue_pin, max_brightness/2 + check*max_brightness/2);
       start_micros = micros();
       check = -check;
     }
     
-    if (brightness < 4){
-      brightness = 255;
-    }
+//    if (brightness < 4){
+//      brightness = max_brightness;
+//    }
   }
   
   
