@@ -188,16 +188,11 @@ void switch1_open(int blue_pin, int green_pin, int blue_freq, int red_pin, bool 
   unsigned long current_micros;
   const unsigned long period = 1000000 / blue_freq; 
 
-  
-
   int check_fading_done = 0; //boolean that checked whether the green LED is done fading (so it can start blinking)
   int check = 1;
   int check2 = 1;
   int brightness = max_brightness;
 
-  
-  
-  //int step_time = (int) (time_constant * 1000 / 254);
   const unsigned long step_time = time_constant * 1000 / max_brightness;
   int counter = 0;
   int counter2 = 0;
@@ -248,10 +243,6 @@ void switch1_open(int blue_pin, int green_pin, int blue_freq, int red_pin, bool 
     }
 
 
-    
-
-    
-
     //state exit condition
     if (state != state_previous) {
       analogWrite(green_pin, 0);
@@ -269,11 +260,6 @@ void switch1_open(int blue_pin, int green_pin, int blue_freq, int red_pin, bool 
       check = -check;
     }
     
-//    if (brightness < 4){
-//      brightness = max_brightness;
-//    }
-  }
-  
   
   
 }
