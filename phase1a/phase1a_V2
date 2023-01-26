@@ -75,7 +75,8 @@ void setup() {
 void loop() {
   // 20 < x and x < 28
   int potentiometerValue = (analogRead(POTENTIOMETER_PIN)); //  * 4) - 1700;
-  outValuePot = map(potentiometerValue, 0, 1023, 0, 255);
+  outValuePot = potentiometerValue;
+  //outValuePot = map(potentiometerValue, 0, 1023, 0, 255);
   Serial.println(outValuePot);
   switch(state){
     case OFF:
@@ -90,8 +91,9 @@ void loop() {
       break;
 
     case RUN:
-      if (digitalRead(pin3) == LOW && digitalRead(pin2) == LOW) {
-        Serial.println("pin3 high");
+      if (digitalRead(pin3) == LOW && digitalRead(pin2) == HIGH) {
+        Serial.println("pin3 low and pin2 high");
+        Serial.println("This is the default state, switch #1 is open and switch #2 is closed");
         if (outValuePot <= 107) { 
           Serial.println("ENTER RUN STATE");
           state_previous = RUN;
@@ -103,10 +105,11 @@ void loop() {
           Serial.println("ENTER RUN STATE");
           state_previous = RUN;
           fade_LED(green_LED, 3);
-          blink_LED(green_LED, 2, 2); 
+          blink_LED(green_LED, outValuePot, 2); 
         } 
       } else if (digitalRead(pin3) == HIGH && digitalRead(pin2) == HIGH) {
-        Serial.println("pin3 high");
+        Serial.println("pin3 high and pin2 is high");
+        Serial.println("Switch #1 moved from OPEN to CLOSED. Switch #2 is closed");
         if (outValuePot <= 107) { 
           Serial.println("ENTER RUN STATE");
           state_previous = RUN;
@@ -118,11 +121,13 @@ void loop() {
         if (outValuePot >= 108) {
           Serial.println("ENTER RUN STATE");
           state_previous = RUN;
+          blink_LED(blue_LED, outValuePot, 2);
           fade_LED(green_LED, 3);
-          blink_LED(green_LED, 2, 2); 
+          blink_LED(green_LED, outValuePot, 2); 
         } 
       } else if (digitalRead(pin3) == HIGH && digitalRead(pin2) == LOW) {
         Serial.println("pin3 high pin2 low");
+        Serial.println("Switch #1 moved from OPEN to CLOSED. Switch #2 is OPEN. RED AND BLUE SHOULD BE ON");
         if (outValuePot <= 107) { 
           Serial.println("ENTER RUN STATE");
           state_previous = RUN;
@@ -135,8 +140,10 @@ void loop() {
         if (outValuePot >= 108) {
           Serial.println("ENTER RUN STATE");
           state_previous = RUN;
+          blink_LED(blue_LED, outValuePot, 2);
+          blink_LED(red_LED, outValuePot, 2);  
           fade_LED(green_LED, 3);
-          blink_LED(green_LED, 2, 2); 
+          blink_LED(green_LED, outValuePot, 2); 
         } 
       }
       break;
