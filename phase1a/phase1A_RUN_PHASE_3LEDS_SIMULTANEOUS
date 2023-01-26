@@ -126,6 +126,7 @@ void loop() {
         red_on = true;
         blue_freq = 10;
         switch1_open(blue_LED, green_LED,  blue_freq, red_LED, red_on, max_brightness);
+        
 
       } else if (digitalRead(switch1) == HIGH && digitalRead(switch2) == LOW) {
         run_substate_interrupt();//find what substate is currently used
@@ -153,6 +154,10 @@ void loop() {
       Serial.println("ENTER DIAGNOSTIC STATE");
       state_previous = DIAGNOSTIC;
       blink_LED(red_LED, 2, N_diag);      
+      if(state_previous != DIAGNOSTIC){
+        state_previous = OFF;
+      }
+      
       state = OFF;
       break;
       
@@ -239,6 +244,7 @@ void blink_LED(int pin, int freq, int iterations){
     if (state != state_previous) {
       Serial.println(state);
       state_previous = state; //so can go from OFF to the state we want
+      
       break;  
     }
     delay_val = 1000 / (2 * freq);
@@ -246,8 +252,9 @@ void blink_LED(int pin, int freq, int iterations){
     delay(delay_val);
     analogWrite(pin, 0);
     delay(delay_val);
+    
   } 
- 
+  state_previous = OFF;
   return;
 }
 
