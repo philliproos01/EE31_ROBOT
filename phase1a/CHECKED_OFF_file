@@ -13,7 +13,7 @@ int switch2 = pin2;
 
 int blue_freq = 10;
 
-
+volatile int leave_state = 0;
 
 //analog out pins for fading
 int pin9 = 9;
@@ -82,13 +82,6 @@ void loop() {
     case OFF:
       Serial.println("ENTER OFF STATE");
       Serial.print("OFF STATE: previous state: ");
-      Serial.println(state_previous);
-      if(state_previous != OFF){
-        state = state_previous;
-        break;
-      }else{
-        state_previous = OFF;
-      }
       break;
       
     case ON:
@@ -142,6 +135,10 @@ void loop() {
         blue_freq = 1;
         switch1_open(blue_LED, green_LED,  blue_freq, red_LED, red_on, max_brightness);
 
+        if(leave_state == 1){
+          leave_state = 0;
+          break;
+        }
       }
       
       break;
@@ -150,7 +147,15 @@ void loop() {
       Serial.println("ENTER SLEEP STATE");
       state_previous = SLEEP;
       blink_LED(blue_LED, 4, 3);
+      if(leave_state == 1){
+          leave_state = 0;
+          break;
+      }
       fade_LED(blue_LED, 1);
+      if(leave_state == 1){
+          leave_state = 0;
+          break;
+      }
       state = OFF;
       break;
 
@@ -158,7 +163,10 @@ void loop() {
       Serial.println("ENTER DIAGNOSTIC STATE");
       state_previous = DIAGNOSTIC;
       blink_LED(red_LED, 2, N_diag);      
-      
+      if(leave_state == 1){
+          leave_state = 0;
+          break;
+      }
       state = OFF;
       Serial.println(state_previous);
       break;
@@ -191,12 +199,12 @@ void fade_LED(int analog_pin, int time_constant){
   int brightness = 255;
   int step_time = (int) (time_constant * 1000 / 254);
   while (brightness > 3) {
-    Serial.print("state in sleep: ");
-    Serial.println(state_previous);
+//    Serial.print("state in sleep: ");
+//    Serial.println(state_previous);
     
     if (state != state_previous) {
       analogWrite(analog_pin, 0);
-      
+      leave_state = 1;
       return;  
     }
     analogWrite(analog_pin, brightness);
@@ -253,11 +261,7 @@ void blink_LED(int pin, int freq, int iterations){
       Serial.println(state);
       Serial.print("previous state: ");
       Serial.println(state_previous);
-      state_previous = state;
-      Serial.print("previous state: ");
-      //Serial.println(state_previous);
-      state = OFF;
-      Serial.println(state_previous);
+      leave_state = 1;
       return;  
        //so can go from OFF to the state we want
       
@@ -269,7 +273,7 @@ void blink_LED(int pin, int freq, int iterations){
     delay(delay_val);
     
   } 
-  state_previous = OFF;
+  
   return;
 }
 
@@ -330,6 +334,7 @@ void switch1_open(int blue_pin, int green_pin, int blue_freq, int red_pin, bool 
       analogWrite(green_pin, 0);
       analogWrite(red_pin, 0);
       analogWrite(blue_pin, 0);
+      leave_state = 1;
       Serial.print("new state: ");
       Serial.println(state);
       Serial.print("previous state: ");
