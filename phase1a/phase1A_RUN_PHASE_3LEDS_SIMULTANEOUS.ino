@@ -1,0 +1,347 @@
+
+int max_brightness = 255;
+bool red_on = false;
+void switch1_open(int blue_pin, int green_pin, int blue_freq, int red_pin, bool red_on, int max_brightness);
+
+//DIP SWITCH PINS
+int pin2 = 2;
+int pin3 = 3;
+
+int switch1 = pin3;
+int switch2 = pin2;
+
+int blue_freq = 10;
+
+
+
+//analog out pins for fading
+int pin9 = 9;
+int pin10 = 10;
+int pin11 = 11;
+
+int blue_LED = pin9;
+int green_LED = pin10;
+int red_LED = pin11;
+
+//interrupt pins
+int pin4 = 4;
+int pin5 = 5;
+int pin6 = 6;
+int pin7 = 7;
+int pin8 = 8;
+
+enum State {OFF, ON, RUN, SLEEP, DIAGNOSTIC};
+
+State state = OFF;
+State state_previous = OFF;
+
+volatile int substate = 0;  //for the substates within the RUN state
+int substate_previous = 0;
+
+int N_diag = 5;
+
+//LED pattern functions
+void blink_LED(int analog_pin, int freq, int iterations);
+void fade_LED(int pin, int time_constant);
+
+//interrupt functions
+void off_interrupt();
+void on_interrupt();
+void run_interrupt();
+void sleep_interrupt();
+void diagnostic_interrupt();
+
+void setup() {
+  Serial.begin(9600);
+  pinMode(pin9, OUTPUT);
+  pinMode(pin10, OUTPUT);
+  pinMode(pin11, OUTPUT);
+
+  //interrupts
+  pinMode(pin4, INPUT_PULLUP);
+  pinMode(pin5, INPUT_PULLUP);
+  pinMode(pin6, INPUT_PULLUP);
+  pinMode(pin7, INPUT_PULLUP);
+  pinMode(pin8, INPUT_PULLUP);
+  attachInterrupt(digitalPinToInterrupt(pin8), off_interrupt, CHANGE);
+  attachInterrupt(digitalPinToInterrupt(pin7), on_interrupt, CHANGE);
+  attachInterrupt(digitalPinToInterrupt(pin6), run_interrupt, CHANGE);
+  attachInterrupt(digitalPinToInterrupt(pin5), sleep_interrupt, CHANGE);
+  attachInterrupt(digitalPinToInterrupt(pin4), diagnostic_interrupt, CHANGE);
+  
+  attachInterrupt(digitalPinToInterrupt(switch1), run_substate_interrupt , CHANGE);
+  attachInterrupt(digitalPinToInterrupt(switch2), run_substate_interrupt, CHANGE);
+
+}
+
+void loop() {
+  switch(state){
+    case OFF:
+      Serial.println("ENTER OFF STATE");
+      if(state_previous != OFF){
+        state = state_previous;
+        break;
+      }
+      
+      
+      state_previous = OFF;
+      break;
+      
+    case ON:
+      Serial.println("ENTER ON STATE");
+      state_previous = ON;
+      blink_LED(red_LED, 10, 1);
+      break;
+
+    case RUN:
+      Serial.println("ENTER RUN STATE");
+      state_previous = RUN;
+     
+      if (digitalRead(switch1) == HIGH && digitalRead(switch2) == HIGH) {
+        run_substate_interrupt();//find what substate is currently used
+        substate_previous = substate;
+        //Serial.println("pin3 high and pin2 is high");
+        Serial.println("SWITCH 1 OFF, SWITCH 2 OFF");
+        Serial.println(substate);
+        red_on = false;
+        blue_freq = 1;
+        switch1_open(blue_LED, green_LED,  blue_freq, red_LED, red_on, max_brightness);
+      
+      } else if (digitalRead(switch1) == LOW && digitalRead(switch2) == LOW) {
+        run_substate_interrupt();//find what substate is currently used
+        substate_previous = substate;
+        //Serial.println("pin3 low and pin2 high");
+        Serial.println("SWITCH 1 ON, SWITCH 2 ON");
+        Serial.println(substate);
+        red_on = false;
+        blue_freq = 10;
+        switch1_open(blue_LED, green_LED,  blue_freq, red_LED, red_on, max_brightness);
+        
+      } else if (digitalRead(switch1) == LOW && digitalRead(switch2) == HIGH) {
+        run_substate_interrupt();//find what substate is currently used
+        substate_previous = substate;
+        //Serial.println("pin3 high pin2 low");
+        Serial.println("SWITCH 1 ON, SWITCH 2 OFF");
+        Serial.println(substate);
+        red_on = true;
+        blue_freq = 10;
+        switch1_open(blue_LED, green_LED,  blue_freq, red_LED, red_on, max_brightness);
+
+      } else if (digitalRead(switch1) == HIGH && digitalRead(switch2) == LOW) {
+        run_substate_interrupt();//find what substate is currently used
+        substate_previous = substate;
+        //Serial.println("pin3 high pin2 low");
+        Serial.println("SWITCH 1 OFF, SWITCH 2 ON");
+        Serial.println(substate);
+        red_on = false;
+        blue_freq = 1;
+        switch1_open(blue_LED, green_LED,  blue_freq, red_LED, red_on, max_brightness);
+
+      }
+      
+      break;
+
+    case SLEEP:
+      Serial.println("ENTER SLEEP STATE");
+      state_previous = SLEEP;
+      blink_LED(blue_LED, 4, 3);
+      fade_LED(blue_LED, 1);
+      state = OFF;
+      break;
+
+    case DIAGNOSTIC:
+      Serial.println("ENTER DIAGNOSTIC STATE");
+      state_previous = OFF;
+      blink_LED(red_LED, 2, N_diag);
+      state_previous = OFF;
+      state = OFF;
+      break;
+      
+    
+  } 
+}
+
+
+//REPLACED IT BY AN ANALOG ALTERNATIVE:easier for pots
+//void blink_LED(int pin, int freq, int iterations){
+//  int delay_val = 0;
+//  int i;
+//  for(i = 0; i < iterations; i++){
+//    if (state != state_previous) {
+//      Serial.println(state);
+//      break;  
+//    }
+//    delay_val = 1000 / (2 * freq);
+//    digitalWrite(pin, HIGH);
+//    delay(delay_val);
+//    digitalWrite(pin, LOW);
+//    delay(delay_val);
+//  } 
+//  return;
+//}
+
+void fade_LED(int analog_pin, int time_constant){
+  int brightness = 255;
+  int step_time = (int) (time_constant * 1000 / 254);
+  while (brightness > 3) {
+    if (state != state_previous) {
+      analogWrite(analog_pin, 0);
+      return;  
+    }
+    analogWrite(analog_pin, brightness);
+    brightness -= 1;
+    delay(step_time);
+  }
+  analogWrite(analog_pin, 0);
+}
+
+//interrupt functions
+
+void off_interrupt(){
+  state = OFF;
+}
+
+void on_interrupt(){
+  state = ON;
+}
+
+void run_interrupt(){
+  state = RUN;
+}
+
+void sleep_interrupt(){
+  state = SLEEP;
+}
+
+void diagnostic_interrupt(){
+  state = DIAGNOSTIC;
+}
+
+void run_substate_interrupt(){
+  if (digitalRead(switch1) == HIGH && digitalRead(switch2) == HIGH){
+    substate = 1;
+  }
+  if (digitalRead(switch1) == LOW && digitalRead(switch2) == LOW){
+    substate = 2;
+  }
+  if (digitalRead(switch1) == LOW && digitalRead(switch2) == HIGH){
+    substate = 3;
+  }
+  if (digitalRead(switch1) == HIGH && digitalRead(switch2) == LOW){
+    substate = 4;
+  }
+}
+
+
+void blink_LED(int pin, int freq, int iterations){
+  int delay_val = 0;
+  int i;
+  for(i = 0; i < iterations; i++){
+    if (state != state_previous) {
+      Serial.println(state);
+      state_previous = state; //so can go from OFF to the state we want
+      break;  
+    }
+    delay_val = 1000 / (2 * freq);
+    analogWrite(pin, 255);
+    delay(delay_val);
+    analogWrite(pin, 0);
+    delay(delay_val);
+  } 
+ 
+  return;
+}
+
+void switch1_open(int blue_pin, int green_pin, int blue_freq, int red_pin, bool red_on, int max_brightness){
+  int time_constant = 6;
+  unsigned long start_millis;  
+  unsigned long current_millis;
+  unsigned long start_micros;  
+  unsigned long current_micros;
+  const unsigned long period = 1000000 / blue_freq; 
+
+  int check_fading_done = 0; //boolean that checked whether the green LED is done fading (so it can start blinking)
+  int check = 1;
+  int check2 = 1;
+  int brightness = max_brightness;
+
+  const unsigned long step_time = time_constant * 1000 / max_brightness;
+  int counter = 0;
+  int counter2 = 0;
+
+  if(red_on == true){  
+    analogWrite(red_pin, 255);
+  }
+  
+  start_millis = millis();
+  while (1) {
+    Serial.println(substate);
+    //state exit condition
+    if (state != state_previous) {
+      analogWrite(green_pin, 0);
+      analogWrite(red_pin, 0);
+      analogWrite(blue_pin, 0);
+      break;  
+    }
+
+    //state exit condition
+    if (substate != substate_previous) {
+      analogWrite(green_pin, 0);
+      analogWrite(red_pin, 0);
+      analogWrite(blue_pin, 0);
+      break;  
+    }
+    
+    //fading of the green LED
+    if (check_fading_done == 0){
+      current_millis = millis();
+      if(current_millis-start_millis >= step_time){
+        analogWrite(green_pin, brightness);
+        brightness -= 1;
+        counter += 1;
+        start_millis = millis();
+      }
+    }
+
+    if(check_fading_done == 1){
+      current_millis = millis();
+      if(current_millis-start_millis >= 1000){
+        analogWrite(green_pin, max_brightness/2 + check2*max_brightness/2);
+        check2 = -check2;
+        counter2 += 1;
+        start_millis = millis();
+      }
+    }
+
+    if(counter >= max_brightness){
+      //Serial.println("DONE FADING");
+      check_fading_done = 1;
+      counter = 0;
+      brightness = max_brightness;
+      check2 = 1;
+      start_millis = millis();
+    }
+    
+    if(counter2 >= 5){
+      //Serial.println("DONE BLINKING");
+      check_fading_done = 0;
+      counter2 = 0;
+      start_millis = millis();
+    }
+
+    
+
+    //blue LED blinking
+    current_micros = micros();
+    if(current_micros-start_micros >= period){
+      //Serial.println(max_brightness/2 + check*max_brightness/2);
+      analogWrite(blue_pin, max_brightness/2 + check*max_brightness/2);
+      start_micros = micros();
+      check = -check;
+    }
+    
+  }
+
+}
+ 
+
