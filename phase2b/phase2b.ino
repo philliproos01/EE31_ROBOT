@@ -31,22 +31,33 @@ void setup() {
 
 void loop() {
   delay(2000);
+
+  int power = 80;
   
   digitalWrite(pin13, HIGH); //enable1 pin
   digitalWrite(pin7, HIGH); //enable2 pin
 
-  forward_motion(pin6, pin5, pin10, pin9, 255, 255, 1500);
-  delay(300);
-  pivot_period = 580; //180deg turn
-  pivotright(pin6, pin5, pin10, pin9, 255, 255, pivot_period);
-  delay(2000);
+  forward_motion(pin6, pin5, pin10, pin9, power, power, 1000);
+  delay(1500);
+  
+  pivot_period = 1050;
+  pivotright(pin6, pin5, pin10, pin9, power, power, pivot_period);
+  delay(1500);
+  
+  turn_period = 2100;
+  turnright(pin6, pin5, pin10, pin9, power, power, turn_period);
+  delay(1500);
 
-  turn_period = 950;
-  turnright(pin6, pin5, pin10, pin9, 255, 255, turn_period);
-  delay(2000);
+  pivot_period = 1050;
+  pivotright(pin6, pin5, pin10, pin9, power, power, pivot_period);
+  delay(1500);
 
-  turnleft(pin6, pin5, pin10, pin9, 255, 255, turn_period);
-  delay(2000);
+  turn_period = 2100;
+  turnleft(pin6, pin5, pin10, pin9, power, power, turn_period);
+  delay(1500);
+
+//  turnleft(pin6, pin5, pin10, pin9, power, power, turn_period);
+//  delay(2000);
 
 }
 
@@ -102,7 +113,7 @@ void pivotleft(int rightwheel1, int rightwheel2, int leftwheel1, int leftwheel2,
 void turnleft(int rightwheel1, int rightwheel2, int leftwheel1, int leftwheel2, int analogright, int analogleft, int period){
   analogWrite(rightwheel1, analogright);
   analogWrite(rightwheel2, 0);
-  analogWrite(leftwheel1, analogleft/4);
+  analogWrite(leftwheel1, analogleft/2);
   analogWrite(leftwheel2, 0);
   delay(period);
   analogWrite(rightwheel1, 0);
@@ -114,7 +125,7 @@ void turnleft(int rightwheel1, int rightwheel2, int leftwheel1, int leftwheel2, 
 
 
 void turnright(int rightwheel1, int rightwheel2, int leftwheel1, int leftwheel2, int analogright, int analogleft, int period){
-  analogWrite(rightwheel1, analogright/4);
+  analogWrite(rightwheel1, analogright/2);
   analogWrite(rightwheel2, 0);
   analogWrite(leftwheel1, analogleft);
   analogWrite(leftwheel2, 0);
