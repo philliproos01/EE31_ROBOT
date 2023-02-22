@@ -1,0 +1,23 @@
+int InputPin = 0;      // analog pin 0 is the input pin
+//int OutputPin = 1;   // digital pin 1 is the output pin
+int val = 0;              // variable to store the value read
+
+void setup()
+{
+  Serial.begin(9600);
+  //pinMode(OutputPin, OUTPUT);      // sets the digital pin as output
+}
+
+void loop()
+{
+  //if (val <= 6) {
+    val = analogRead(InputPin);
+    Serial.print("LOW");    // sets the output pin initially to LOW
+    Serial.print(val); 
+  }
+  if (val >= 7) {
+    Serial.print(val);
+    Serial.print("HIGH");    // sets output pin HIGH to activate special effects
+   // delay(1000);                  // waits for a second
+  }
+}
