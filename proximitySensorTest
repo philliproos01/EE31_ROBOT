@@ -10,14 +10,15 @@ void setup()
 
 void loop()
 {
-  //if (val <= 6) {
+  if (val <= 6) {
     val = analogRead(InputPin);
-    Serial.print("LOW");    // sets the output pin initially to LOW
+    //Serial.print("LOW");    // sets the output pin initially to LOW
     Serial.print(val); 
   }
   if (val >= 7) {
+    val = analogRead(InputPin);
     Serial.print(val);
-    Serial.print("HIGH");    // sets output pin HIGH to activate special effects
+    //Serial.print("HIGH");    // sets output pin HIGH to activate special effects
    // delay(1000);                  // waits for a second
   }
 }
