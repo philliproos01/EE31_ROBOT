@@ -5,11 +5,13 @@ void pivotleft(int rightwheel1, int rightwheel2, int leftwheel1, int leftwheel2,
 void turnleft(int rightwheel1, int rightwheel2, int leftwheel1, int leftwheel2, int analogright, int analogleft, int period);
 void turnright(int rightwheel1, int rightwheel2, int leftwheel1, int leftwheel2, int analogright, int analogleft, int period);
 
-int val = 0;
-int InputPin = 0;
 int pivot_period = 1000;
 int turn_period = 1000;
 int power = 0;
+int InputPin = 1;
+int IRpin = 3;
+int val = 0;
+
 
 //motor pins
 int pin9 = 9;
@@ -22,6 +24,8 @@ int pin13 = 13;
 int pin7 = 7;
 
 void setup() {
+  Serial.begin(9600);
+  pinMode(IRpin, INPUT_PULLUP);
   pinMode(pin13, OUTPUT);
   pinMode(pin9, OUTPUT);
   pinMode(pin10, OUTPUT);
@@ -32,33 +36,46 @@ void setup() {
 }
 
 void loop() {
+  int rightwheel1 = pin6; 
+  int rightwheel2 = pin5; 
+  int leftwheel1 = pin10; 
+  int leftwheel2 = pin9;
+  int analogright = 200;
+  int analogleft = 200;
+  digitalWrite(pin13, HIGH); //enable1 pin
+  digitalWrite(pin7, HIGH); //enable2 pin
   val = analogRead(InputPin);
-  if (val <= 6) {
-    val = analogRead(InputPin);
-    //Serial.print("LOW");    // sets the output pin initially to LOW
-    Serial.print(val); 
-    delay(2000);
+  //Serial.print(val); 
+  
+  //if (digitalRead(IRpin) == 1) {
+    if (val >= 656) {
+    //Serial.print("HIGH");    // sets the output pin initially to LOW
+    Serial.println(val); 
+    //Serial.println(digitalRead(IRpin));
+      
 
   int power = 80;
   
-  digitalWrite(pin13, HIGH); //enable1 pin
-  digitalWrite(pin7, HIGH); //enable2 pin
 
-  //forward_motion(pin6, pin5, pin10, pin9, power, power, 100);
-  analogWrite(pin6, power);
-  analogWrite(pin5, 0);
-  analogWrite(pin10, power);
-  analogWrite(pin9, 0);
-  } else {
-    analogWrite(pin6, 0);
-    analogWrite(pin5, 0);
-    analogWrite(pin10, 0);
-    analogWrite(pin9, 0);
-    
-  }
 
+  int rightwheel1 = pin6; 
+  int rightwheel2 = pin5; 
+  int leftwheel1 = pin10; 
+  int leftwheel2 = pin9;
+  int analogright = 200;
+  int analogleft = 200;
   
-
+  forward_motion(pin6, pin5, pin10, pin9, power, power, 100);
+  // delay(1500);
+  //} else if (digitalRead(IRpin) == 0) {
+  } else {
+    Serial.println(val);
+  //Serial.println(digitalRead(IRpin));
+  analogWrite(rightwheel1, 0);
+  analogWrite(rightwheel2, 0);
+  analogWrite(leftwheel1, 0);
+  analogWrite(leftwheel2, 0);
+  }
 }
 
 
