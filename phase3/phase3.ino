@@ -1,11 +1,3 @@
-void forward_motion(int rightwheel1, int rightwheel2, int leftwheel1, int leftwheel2, int analogright, int analogleft, int period);
-void backward_motion(int rightwheel1, int rightwheel2, int leftwheel1, int leftwheel2, int analogright, int analogleft, int period);
-void pivotright(int rightwheel1, int rightwheel2, int leftwheel1, int leftwheel2, int analogright, int analogleft, int period);
-void pivotleft(int rightwheel1, int rightwheel2, int leftwheel1, int leftwheel2, int analogright, int analogleft, int period);
-void turnleft(int rightwheel1, int rightwheel2, int leftwheel1, int leftwheel2, int analogright, int analogleft, int period);
-void turnright(int rightwheel1, int rightwheel2, int leftwheel1, int leftwheel2, int analogright, int analogleft, int period);
-
-
 int pin3 = 3; //power white light
 
 int value = 0;
@@ -13,7 +5,7 @@ int value = 0;
 // motor declarations
 int pivot_period = 1000;
 int turn_period = 1000;
-int power = 0;
+int power = 80;
 
 // motor pins
 int pin9 = 9;
@@ -40,39 +32,47 @@ void setup() {
   pinMode(pin5, OUTPUT);
   pinMode(pin6, OUTPUT);
   pinMode(pin7, OUTPUT);
+
+  digitalWrite(pin13, HIGH); // enable1 pin
+  digitalWrite(pin7, HIGH); // enable2 pin
+  delay(1000);
 }
 
 void loop() {
   value = analogRead(A1) ;
   // change_state();
-  yellow_line_tracker();
+  line_tracker(BLUE);
 }
 
-void yellow_line_tracker() {
+void line_tracker(State COLOR) {
+  int power = 50;
+  turn_period = 20;
   while(true) {
     change_state();
-    // go straight
-    while (color == YELLOW) {
+    while (color == COLOR) {
+      turnright(pin5, pin6, pin10, pin9, power, power, turn_period);
       change_state();
-      forward_motion(pin5, pin6, pin10, pin9, power, power, 1000);
     }
-    if (color != YELLOW) {
-      // first turn left
-      turn_period = 2100;
+    
+    while (color != COLOR) {
       turnleft(pin5, pin6, pin10, pin9, power, power, turn_period);
-      // check if its yellow after waiting a bit.
-      // if not yellow, then turn right
-      delay(10);
       change_state();
-      if (color != YELLOW) {
-        turn_period = 2100;
-        turnright(pin5, pin6, pin10, pin9, power, power, turn_period);
-      }
+    }
+
+    while (color == COLOR) {
+      turnleft(pin5, pin6, pin10, pin9, power, power, turn_period);
+      change_state();
+    }
+
+    while (color != COLOR) {
+      turnright(pin5, pin6, pin10, pin9, power, power, turn_period);
+      change_state();
     }
   }
 }
 
 void change_state() {
+  value = analogRead(A1) ;
   if((value < 500)) {
     color = DARK;
     Serial.println("d");
@@ -137,7 +137,8 @@ void pivotleft(int rightwheel1, int rightwheel2, int leftwheel1, int leftwheel2,
   analogWrite(leftwheel2, 0); 
 }
 
-void turnleft(int rightwheel1, int rightwheel2, int leftwheel1, int leftwheel2, int analogright, int analogleft, int period){
+void turnright(int rightwheel1, int rightwheel2, int leftwheel1, int leftwheel2, int analogright, int analogleft, int period){
+  Serial.println("inside turning func");
   analogWrite(rightwheel1, analogright);
   analogWrite(rightwheel2, 0);
   analogWrite(leftwheel1, analogleft/2);
@@ -151,7 +152,7 @@ void turnleft(int rightwheel1, int rightwheel2, int leftwheel1, int leftwheel2, 
 }
 
 
-void turnright(int rightwheel1, int rightwheel2, int leftwheel1, int leftwheel2, int analogright, int analogleft, int period){
+void turnleft(int rightwheel1, int rightwheel2, int leftwheel1, int leftwheel2, int analogright, int analogleft, int period){
   analogWrite(rightwheel1, analogright/2);
   analogWrite(rightwheel2, 0);
   analogWrite(leftwheel1, analogleft);
