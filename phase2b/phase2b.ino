@@ -30,34 +30,52 @@ void setup() {
 }
 
 void loop() {
-  delay(2000);
+//  delay(2000);
 
   int power = 80;
   
   digitalWrite(pin13, HIGH); //enable1 pin
   digitalWrite(pin7, HIGH); //enable2 pin
-
-  forward_motion(pin6, pin5, pin10, pin9, power, power, 1000);
-  delay(1500);
   
-  pivot_period = 1050;
-  pivotright(pin6, pin5, pin10, pin9, power, power, pivot_period);
-  delay(1500);
+//  analogWrite(pin5, power);
+//  analogWrite(pin6, 0);
+//  analogWrite(pin10, power);
+//  analogWrite(pin9, 0);
+//  
+//  delay(1000);
+//  analogWrite(pin9, 0);
+//  analogWrite(pin10, 0);
+//  analogWrite(pin5, 0);
+//  analogWrite(pin6, 0);
+ 
+  
+  forward_motion(pin5, pin6, pin10, pin9, power, power, 1000);
+  delay(1000);
+  backward_motion(pin5, pin6, pin10, pin9, power, power, 1000);
+//  pivot_period = 1050;
+//  pivotright(pin6, pin5, pin10, pin9, power, power, pivot_period);
+//  delay(1500);
+  delay(1000);
   
   turn_period = 2100;
-  turnright(pin6, pin5, pin10, pin9, power, power, turn_period);
-  delay(1500);
-
-  pivot_period = 1050;
-  pivotright(pin6, pin5, pin10, pin9, power, power, pivot_period);
-  delay(1500);
+  turnright(pin5, pin6, pin10, pin9, power, power, turn_period);
+  delay(1000);
 
   turn_period = 2100;
-  turnleft(pin6, pin5, pin10, pin9, power, power, turn_period);
-  delay(1500);
+  turnleft(pin5, pin6, pin10, pin9, power, power, turn_period);
+  delay(1000);
 
-//  turnleft(pin6, pin5, pin10, pin9, power, power, turn_period);
-//  delay(2000);
+  pivot_period = 1050;
+  pivotright(pin6, pin5, pin9, pin10, power, power, pivot_period);
+  delay(1000);
+
+  pivot_period = 1050;
+  pivotleft(pin6, pin5, pin9, pin10, power, power, pivot_period);
+  delay(1000);
+
+  
+
+
 
 }
 
