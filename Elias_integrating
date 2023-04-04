@@ -1,1 +1,210 @@
+enum State {YELLOW, RED, BLUE, DARK};
+State color = DARK;
 
+bool tracking_bool = true;
+bool collision_absence = true;
+
+int pin3 = 3; //power white light
+int ambient_light_analog = 0;
+int value = 0;
+
+int val1 = 0;
+
+// motor declarations
+int pivot_period = 1000;
+int turn_period = 1000;
+int power = 80;
+
+// motor pins
+int pin9 = 9;
+int pin10 = 10;
+int pin5 = 5;
+int pin6 = 6;
+
+// enable pins
+int pin13 = 13;
+int pin7 = 7;
+
+void setup() {
+  Serial.begin(9600);
+  pinMode(pin3, OUTPUT);
+  digitalWrite(pin3, HIGH); // power white LED
+
+  // motor setup
+  pinMode(pin13, OUTPUT);
+  pinMode(pin9, OUTPUT);
+  pinMode(pin10, OUTPUT);
+  pinMode(pin5, OUTPUT);
+  pinMode(pin6, OUTPUT);
+  pinMode(pin7, OUTPUT);
+
+  digitalWrite(pin13, HIGH); // enable1 pin
+  digitalWrite(pin7, HIGH); // enable2 pin
+  delay(1000);
+}
+
+void loop() {
+  Serial.println(collision_absence);
+  change_state();
+  Serial.println("LOOPPPP");
+  State what_to_track = color;
+  line_tracker(what_to_track);
+  Serial.println("LOOPPPP");
+}
+
+void line_tracker(State COLOR) {
+  int power = 80;
+  turn_period = 20;
+  while(tracking_bool) {
+    change_state();
+    
+    while ((color == COLOR) && tracking_bool && collision_absence ) {
+      turnright(pin5, pin6, pin10, pin9, power, power, turn_period);
+      change_state();
+    }
+    
+    while ((color != COLOR) && tracking_bool && collision_absence) {
+      turnleft(pin5, pin6, pin10, pin9, power, power, turn_period);
+      change_state();
+    }
+
+    while ((color == COLOR) && tracking_bool && collision_absence) {
+      turnleft(pin5, pin6, pin10, pin9, power, power, turn_period);
+      change_state();
+    }
+
+    while ((color != COLOR) && tracking_bool && collision_absence) {
+      turnright(pin5, pin6, pin10, pin9, power, power, turn_period);
+      change_state();
+    }
+  }
+}
+
+void change_state() {
+  //color sensing
+  value = analogRead(A1);
+  if((value < 500)) {
+    color = DARK;
+  } else if((500 < value) and (value < 600)) {
+    color = BLUE;
+  } else if((600 < value) and (value < 650)) {
+    color = RED;
+  } else if(650 < value) {
+    color = YELLOW;
+  }
+
+  //collision sys
+  collision_sense();
+  
+  //ambient light sensing
+  ambient_light_sense();
+
+}
+
+
+void ambient_light_sense(){
+  ambient_light_analog = analogRead(A0);
+//  Serial.print("Analog reading: ");
+//  Serial.println(ambient_light_analog);
+  if (ambient_light_analog > 400) {
+    digitalWrite(8, LOW);
+  } else if (ambient_light_analog < 400) {
+    digitalWrite(8, HIGH);
+    tracking_bool = false;
+  } 
+}
+
+void collision_sense(){
+//  Serial.println(collision_absence);
+  val1 = 0;
+  if (val1 <= 100) {
+    val1 = analogRead(A2);
+    //Serial.print("LOW");    // sets the output pin initially to LOW
+    //Serial.println(val1); 
+    collision_absence = false;
+    Serial.println(val1);
+  }
+  if (val1 >= 100) {
+    val1 = analogRead(A2);
+    //Serial.println(val1);
+    //Serial.print("HIGH");    // sets output pin HIGH to activate special effects
+   // delay(1000);  // waits for a second
+    collision_absence = true;
+    Serial.println(val1);
+  }
+  
+  
+}
+// motor control functions
+void backward_motion(int rightwheel1, int rightwheel2, int leftwheel1, int leftwheel2, int analogright, int analogleft, int period){
+  analogWrite(rightwheel1, 0);
+  analogWrite(rightwheel2, analogright);
+  analogWrite(leftwheel1, 0);
+  analogWrite(leftwheel2, analogleft);
+  delay(period);
+  analogWrite(rightwheel1, 0);
+  analogWrite(rightwheel2, 0);
+  analogWrite(leftwheel1, 0);
+  analogWrite(leftwheel2, 0);
+}
+
+void forward_motion(int rightwheel1, int rightwheel2, int leftwheel1, int leftwheel2, int analogright, int analogleft, int period){
+  analogWrite(rightwheel1, analogright);
+  analogWrite(rightwheel2, 0);
+  analogWrite(leftwheel1, analogleft);
+  analogWrite(leftwheel2, 0);
+  delay(period);
+  analogWrite(rightwheel1, 0);
+  analogWrite(rightwheel2, 0);
+  analogWrite(leftwheel1, 0);
+  analogWrite(leftwheel2, 0);
+}
+
+void pivotright(int rightwheel1, int rightwheel2, int leftwheel1, int leftwheel2, int analogright, int analogleft, int period){
+  analogWrite(rightwheel1, analogright);
+  analogWrite(rightwheel2, 0);
+  analogWrite(leftwheel1, 0);
+  analogWrite(leftwheel2, analogleft);
+  delay(period);
+  analogWrite(rightwheel1, 0);
+  analogWrite(rightwheel2, 0);
+  analogWrite(leftwheel1, 0);
+  analogWrite(leftwheel2, 0);
+}
+
+void pivotleft(int rightwheel1, int rightwheel2, int leftwheel1, int leftwheel2, int analogright, int analogleft, int period){
+  analogWrite(rightwheel1, 0);
+  analogWrite(rightwheel2, analogright);
+  analogWrite(leftwheel1, analogleft);
+  analogWrite(leftwheel2, 0);
+  delay(period);
+  analogWrite(rightwheel1, 0);
+  analogWrite(rightwheel2, 0);
+  analogWrite(leftwheel1, 0);
+  analogWrite(leftwheel2, 0); 
+}
+
+void turnright(int rightwheel1, int rightwheel2, int leftwheel1, int leftwheel2, int analogright, int analogleft, int period){
+  analogWrite(rightwheel1, analogright);
+  analogWrite(rightwheel2, 0);
+  analogWrite(leftwheel1, analogleft/4);
+  analogWrite(leftwheel2, 0);
+  delay(period);
+  analogWrite(rightwheel1, 0);
+  analogWrite(rightwheel2, 0);
+  analogWrite(leftwheel1, 0);
+  analogWrite(leftwheel2, 0);
+}
+
+
+void turnleft(int rightwheel1, int rightwheel2, int leftwheel1, int leftwheel2, int analogright, int analogleft, int period){
+  analogWrite(rightwheel1, analogright/4);
+  analogWrite(rightwheel2, 0);
+  analogWrite(leftwheel1, analogleft);
+  analogWrite(leftwheel2, 0);
+  delay(period);
+  analogWrite(rightwheel1, 0);
+  analogWrite(rightwheel2, 0);
+  analogWrite(leftwheel1, 0);
+  analogWrite(leftwheel2, 0);
+}
