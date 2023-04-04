@@ -54,7 +54,6 @@ void loop() {
     // format of postRoute: "POST /senderID/receiverID HTTP/1.1"
     char postRoute[] = "POST /F79721857DC5/F79721857DC5 HTTP/1.1";
     POSTServer(postRoute, postBody);
-    Serial.println("just posted");
 
     // format of gettRoute: "GET /senderID/receiverID HTTP/1.1"
     char getRoute[] = "GET /F79721857DC5/F79721857DC5 HTTP/1.1";
@@ -62,7 +61,6 @@ void loop() {
     static char messageData[MSGDATA_SIZE + 1];
     // sender GETs messageData from receiver
     GETServer(getRoute, messageData);
-    Serial.println(messageData);
     counter++;
   }
     if (!client.connected()) {
@@ -127,9 +125,10 @@ char *GetMessageBody(char *message) {
     buffer[currentLine.length()] = '\0';
     currentLine.toCharArray(buffer, currentLine.length() + 1);
     char * result = parseLine(buffer);
+    message = result;
     return result;
   }
-  return message;
+  return "";
 }
 
 char *parseLine(char* message) {
@@ -144,7 +143,6 @@ char *parseLine(char* message) {
   int numPairs = 0;
 
   // Split the input string by "&" to separate the key-value pairs
-  Serial.println(message);
   char* pair = strtok(message, "&");
   while (pair != NULL && numPairs < 10) {
     // Split each key-value pair by "=" to separate the key and value
@@ -158,8 +156,23 @@ char *parseLine(char* message) {
         counter++;
       }
     }
-    char* key = pair;
-    char* value = pair;
+    char* key = (char*) malloc(sizeof(char));
+    key[0] = '\0';
+    for (int i = 0; i < counter; i++) {
+      char* new_str = (char*) malloc(sizeof(char)*2);
+      new_str[0] = pair[i];
+      new_str[1] = '\0';      
+      strcat(key, new_str);
+    }
+
+    char* value = (char*) malloc(sizeof(char));
+    value[0] = '\0';
+    for (int i = counter + 1; i < strlen(pair); i++) {
+      char* new_str = (char*) malloc(sizeof(char)*2);
+      new_str[0] = pair[i];
+      new_str[1] = '\0';
+      strcat(value, new_str);
+    }
 
     // Add the key-value pair to the array
     keyValuePairs[numPairs].key = key;
@@ -172,10 +185,13 @@ char *parseLine(char* message) {
   char *result = (char*) malloc(sizeof(char));
   result[0] = '\0';
   // Print out the parsed values for testing
-  for (int i = 0; i < numPairs; i++) {
-    Serial.println((String)keyValuePairs[i].key);
-    // Serial.println((String)keyValuePairs[i].key + " : " +(String)keyValuePairs[i].value);
-    strcat(result, (char*)keyValuePairs[i].value);
+  for (int i = 3; i < numPairs; i++) {
+    char* val = (char*) malloc(sizeof(char)*(strlen(keyValuePairs[i].value) + 1));
+    val[(strlen(keyValuePairs[i].value))] = '\0';
+    for (int j = 0; j < (strlen(keyValuePairs[i].value)); j++) {
+      val[j] = keyValuePairs[i].value[j];
+    }
+    strcat(result, (char*)val);
   }
   return result;
 }
