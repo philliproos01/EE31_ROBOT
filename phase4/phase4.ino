@@ -14,14 +14,9 @@ int status = WL_IDLE_STATUS;
 char server[] = "ee31.ece.tufts.edu"; // for Tufts
 int portNumber = 80; // for Tufts
 int counter = 0;
-// Initialize the Ethernet client library
-// with the IP address and port of the server
-// that you want to connect to (port 80 is default for HTTP):
-
 WiFiClient client;
 
 void setup() {
-  //Initialize serial and wait for port to open:
   Serial.begin(9600);
   while (!Serial) {
     ; // wait for serial port to connect. Needed for native USB port only
@@ -45,18 +40,12 @@ void setup() {
     Serial.println(ssid);
     // Connect to WPA/WPA2 network. Change this line if using open or WEP network:
     status = WiFi.begin(ssid, pass);
-    // wait 10 seconds for connection:
-    delay(10000);
+    // wait 1 second for connection:
+    delay(1000);
   }
-
   Serial.println("Connected to wifi");
   printWifiStatus();
   Serial.println("\nStarting connection to server...");
-  // format of post parameters to be sent
-  
-
-  
-  // Serial.println(result);
 }
 
 void loop() {
@@ -64,57 +53,39 @@ void loop() {
     char postBody[] = "variable1=h&variable2=e&variable3=l&variable4=l&variable5=o";
     // format of postRoute: "POST /senderID/receiverID HTTP/1.1"
     char postRoute[] = "POST /F79721857DC5/F79721857DC5 HTTP/1.1";
-    // function call to make a post command
     POSTServer(postRoute, postBody);
-    // if there are incoming bytes available
-    // from the server, read them and print them:
-    while (client.available()) {
-      char c = client.read();
-      Serial.write(c);
-    }    
+    Serial.println("just posted");
 
+    // format of gettRoute: "GET /senderID/receiverID HTTP/1.1"
+    char getRoute[] = "GET /F79721857DC5/F79721857DC5 HTTP/1.1";
     // message data array size plus one for null '\0' at end of C-string
     static char messageData[MSGDATA_SIZE + 1];
-    // format of gettRoute: "GET /senderID/receiverID HTTP/1.1"
-    char getRoute[] = "GET /F79721857DC5/F79721857DC5 HTTP/1.1"; //ERYTHREAEN/GREIGE
     // sender GETs messageData from receiver
     GETServer(getRoute, messageData);
-    // if there are incoming bytes available
-    // from the server, read them and print them:
-    
+    Serial.println(messageData);
     counter++;
   }
-
-  
-  while (client.available()) {
-    char c = client.read();
-    Serial.write(c);
-  }    
-  
-  // if the server's disconnected, stop the client:
-  if (!client.connected()) {
+    if (!client.connected()) {
     Serial.println("disconnecting from server.");
     client.stop();
-    // do nothing forevermore:
     while (true);
-
   }
 }
 
-// POST function call -- post message from sender to the receiver
 void POSTServer(const char theRoute[], char *bodyMessage) {
-  client.println(theRoute);
-  client.print("Host: ");
-  client.println(server);
-  client.println("Content-Type: application/x-www-form-urlencoded");
-  client.print("Content-Length: ");
-  int postBodyLength = strlen(bodyMessage);
-  client.println(postBodyLength);
-  client.println();
-  client.print(bodyMessage);
+  if (client.connect(server, portNumber)) {
+    client.println(theRoute);
+    client.print("Host: ");
+    client.println(server);
+    client.println("Content-Type: application/x-www-form-urlencoded");
+    client.print("Content-Length: ");
+    int postBodyLength = strlen(bodyMessage);
+    client.println(postBodyLength);
+    client.println();
+    client.println(bodyMessage);
+  }
 }
 
-// GET function call -- get message to sender from the receiver
 void GETServer(const char theRoute[], char *message) {
   if (client.connect(server, portNumber)) {
     // Make a HTTP GET request:
@@ -123,13 +94,11 @@ void GETServer(const char theRoute[], char *message) {
     client.println(server);
     client.println("Connection: close");
     client.println();
-
-    client.read(message, MSGDATA_SIZE);
+    delay(150);
     char* result = GetMessageBody(message); // get the message from the server
-    client.println(result);    
-    
-    // place in appropriate form and variable
-    // if the server's disconnected, stop the client:
+    Serial.println("result:");
+    Serial.println(result);
+
     if (!client.connected()) {
       client.stop();
     }
@@ -137,67 +106,76 @@ void GETServer(const char theRoute[], char *message) {
 }
 
 char *GetMessageBody(char *message) {
+  String currentLine = "";
   while (client.available()) {
     char c = client.read();
-    Serial.write(c);
-  }
-
-  String currentLine = "";                // make a String to hold incoming data from the client
-  while (client.connected()) {            // loop while the client's connected
-    if (client.available()) {             // if there's bytes to read from the client,
-      char c = client.read();             // read a byte, then
-      // Serial.println(c);                    // print it out the serial monitor
-      if (c == '\n') {                    // if the byte is a newline character
-        // if the current line is blank, you got two newline characters in a row.
-        // that's the end of the client HTTP request, so send a response:
-        if (currentLine.length() == 0) {
-          // HTTP headers always start with a response code (e.g. HTTP/1.1 200 OK)
-          // and a content-type so the client knows what's coming, then a blank line:
-          client.println("HTTP/1.1 200 OK");
-          client.println("Content-type:text/html");
-          // client.println();
-          // the content of the HTTP response follows the header:
-          // client.print("Click <a href=\"/H\">here</a> turn the LED on<br>");
-          // client.print("Click <a href=\"/L\">here</a> turn the LED off<br>");
-          // The HTTP response ends with another blank line:
-          client.println();
-          // break out of the while loop:
-          break;
-        } else {      // if you got a newline, then clear currentLine:
-          currentLine.toCharArray(message, MSGDATA_SIZE);
-          Serial.println(currentLine);
-          char *result = parseLine(message);
-          currentLine = "";
-        }
-      } else if (c != '\r') {    // if you got anything else but a carriage return character,
-        currentLine += c;      // add it to the end of the currentLine
-      }
+    if (c == '\n') {
+      if (currentLine.startsWith("senderID")) {
+      char *buffer = (char*) malloc(sizeof(char)*(currentLine.length() + 1));
+      buffer[currentLine.length()] = '\0';
+      currentLine.toCharArray(buffer, currentLine.length() + 1);
+      char * result = parseLine(buffer);
+      return result;
     }
+      currentLine = "";
+    } else if (c != '\r') {
+      currentLine += c;
+    }
+  }
+  if (currentLine.startsWith("senderID")) {
+    char *buffer = (char*) malloc(sizeof(char)*(currentLine.length()+1));
+    buffer[currentLine.length()] = '\0';
+    currentLine.toCharArray(buffer, currentLine.length() + 1);
+    char * result = parseLine(buffer);
+    return result;
   }
   return message;
 }
 
 char *parseLine(char* message) {
-  char *senderID;
-  char *receiverID;
-  char *message_returned;
+  // Define a struct to store the key-value pairs
+  typedef struct {
+    char* key;
+    char* value;
+  } KeyValuePair;
+
+  // Define an array to store the key-value pairs
+  KeyValuePair keyValuePairs[10];
+  int numPairs = 0;
+
+  // Split the input string by "&" to separate the key-value pairs
+  Serial.println(message);
+  char* pair = strtok(message, "&");
+  while (pair != NULL && numPairs < 10) {
+    // Split each key-value pair by "=" to separate the key and value
+    int counter = 0;
+    int seen_equal = false;
+    for (int i = 0; i < strlen(pair); i++) {
+      if (pair[i] == '=') {
+        seen_equal = true;
+      }
+      if (!seen_equal) {
+        counter++;
+      }
+    }
+    char* key = pair;
+    char* value = pair;
+
+    // Add the key-value pair to the array
+    keyValuePairs[numPairs].key = key;
+    keyValuePairs[numPairs].value = value;
+    numPairs++;
+
+    // Move to the next key-value pair
+    pair = strtok(NULL, "&");
+  }
   char *result = (char*) malloc(sizeof(char));
   result[0] = '\0';
-
-  char *splitted = strtok(message, "&");
-  while (splitted != NULL) {
-    char *name = strtok(splitted, "=");
-    char *value = strtok(NULL, "=");
-    if (strcmp(name, "senderID") == 0) {
-      senderID = value;
-    } else if (strcmp(name, "receiverID") == 0) {
-      receiverID = value;
-    } else if (strcmp(name, "message") == 0) {
-      message_returned = value;
-    } else if (strcmp(name, "senderID") != 0 && strcmp(name, "receiverID") != 0 && strcmp(name, "message") != 0) {
-      strcat(result, value);
-    }
-    splitted = strtok(NULL, "&");
+  // Print out the parsed values for testing
+  for (int i = 0; i < numPairs; i++) {
+    Serial.println((String)keyValuePairs[i].key);
+    // Serial.println((String)keyValuePairs[i].key + " : " +(String)keyValuePairs[i].value);
+    strcat(result, (char*)keyValuePairs[i].value);
   }
   return result;
 }
