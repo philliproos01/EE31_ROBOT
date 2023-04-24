@@ -10,7 +10,7 @@ void setup() {
   pinMode(9, INPUT_PULLUP);
   digitalWrite(LED, HIGH);
   digitalWrite(LED_BUILTIN, LOW);   // turn the LED off by making the voltage LOW
-  delay(1000);      
+  delay(1000);
 }
 
 // the loop function runs over and over again forever
