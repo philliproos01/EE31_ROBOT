@@ -79,7 +79,7 @@ void loop() {
   val = digitalRead(pin11);
   Serial.println(val);// wait for a second
   //if (val =)
-  if (digitalRead(pin11) == HIGH) {
+  if (digitalRead(pin11) == LOW) {
     // digitalWrite(LED2, HIGH);
 
     //Saying MOVE 5 SECONDS to the other bot
@@ -91,8 +91,8 @@ void loop() {
     POSTServer(postRoute, postBody);
 
     
-  } else if (digitalRead(pin11) == LOW) {
-    // digitalWrite(LED2, LOW);
+  } else if (digitalRead(pin11) == HIGH) {
+    Serial.println("Switch is OFF");
   }
   
   if (!client.connected()) {
