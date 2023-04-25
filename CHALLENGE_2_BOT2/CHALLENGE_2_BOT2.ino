@@ -3,6 +3,7 @@
 
 #define SECRET_SSID "junior"
 #define SECRET_PASS "designdesign"
+
 #define COMMAND_ARRAY_SIZE 20
 #define PARAMETER_ARRAY_SIZE 40
 #define CHAR_ARRAY_LENGTH 25
@@ -24,6 +25,7 @@ boolean CRLF2 = false;
 char ssid[] = SECRET_SSID;
 char pass[] = SECRET_PASS;
 
+char postBody[] =  "warninglight=0&headlights=1&variable3=3&variable4=4&variable5=5&variable6=6";
 int sendBody = 0;
 
 // separate commands into individual strings
@@ -80,7 +82,6 @@ int value4 = 0;
 
 float calibrate_me = 1400;
 
-
 void setup() {
   Serial.begin(9600);
   pinMode(pin3, OUTPUT);
@@ -102,29 +103,27 @@ void setup() {
   pinMode(pin12, OUTPUT); //brakes
 
   pinMode(pin2, OUTPUT);//horn
-  // start up cycle
-  // check for the WiFi module:
-  while (status != WL_CONNECTED) {
-    Serial.print("Attemping to connect to Network named: ");
-    Serial.println(ssid);
-    status = WiFi.begin(ssid, pass);
-  }
-  // end start up cycle
-  Serial.print("SSID: ");
-  Serial.print(WiFi.SSID());
-  IPAddress ip = WiFi.localIP();
-  IPAddress gateway = WiFi.gatewayIP();
-  Serial.print("IP Address: ");
-  Serial.println(ip);
-
-  // Saying WAIT to the other bot
-  char postBody[] = "command=W";
-  char postRoute[] = "POST /F79721857DC5/89C87865077A HTTP/1.1";
-  POSTServer(postRoute, postBody);
+  
 }
 
 void loop() {
-  if(counter == 0){
+  // ********************** GET ***********************
+  Serial.println("Doing GET");
+  char getRoute[] = "GET /89C87865077A/F79721857DC5 HTTP/1.1";
+  GETServer(getRoute);
+  Serial.print("Message: ");
+  Serial.println(messageData);
+  int parsedLength = parseMessage(valuesArray, messageData);
+  valuesArray[parsedLength] = '\0';
+  Serial.print("Values: ");
+  Serial.println(valuesArray);
+  
+  if (valuesArray[3] == 'W') {
+    Serial.println("WAIT");
+  } else if (valuesArray[3] == 'M') {
+    Serial.println("MOVE");
+  }
+  if(valuesArray[3] == 'M' && counter == 0){
     forward_motion(pin5, pin6, pin10, pin9, power, power, calibrate_me);
     delay(500);
     pivotleft(pin5, pin6, pin10, pin9, power, power, calibrate_me * 0.70);
@@ -147,12 +146,6 @@ void loop() {
     delay(500);
     forward_motion(pin5, pin6, pin10, pin9, power, power, calibrate_me * 0.25);
     delay(500);
-    // ********************** POST ***********************
-    Serial.println("Doing POST");
-    char postBody[] = "command=M";
-    // format of postRoute: "POST /senderID/receiverID HTTP/1.1"
-    char postRoute[] = "POST /F79721857DC5/89C87865077A HTTP/1.1";
-    POSTServer(postRoute, postBody);
     counter += 1;    
   }
 
@@ -406,13 +399,9 @@ void turnleft(int rightwheel1, int rightwheel2, int leftwheel1, int leftwheel2, 
 //   delay(800);
 //   digitalWrite(pin, LOW);
 // }
-
 // POST function doing actual call
 void POSTServer(const char theRoute[], char *bodyMessage) {  
  if (client.connect(server, portNumber)) {
-
-      Serial.println("POST: Connected to server");
-
     // Make a HTTP POST request:
     client.println(theRoute);
     client.print("Host: ");
@@ -423,7 +412,7 @@ void POSTServer(const char theRoute[], char *bodyMessage) {
     client.println(postBodyLength);
     client.println();
     client.print(bodyMessage);
-  }
+ }
 }
 
 // GET function doing actual call
@@ -432,6 +421,7 @@ void GETServer(const char theRoute[]) {
       if (client.connect(server, portNumber)) {
       Serial.println("GET: Connected to server");
 
+      // connected to server, turn on the LED
       Serial.println("Server connected");
       
       // Make a HTTP GET request:
