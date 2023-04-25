@@ -1,3 +1,45 @@
+#include <SPI.h>
+#include <WiFiNINA.h>
+
+#define SECRET_SSID "junior"
+#define SECRET_PASS "designdesign"
+
+#define COMMAND_ARRAY_SIZE 20
+#define PARAMETER_ARRAY_SIZE 40
+#define CHAR_ARRAY_LENGTH 25
+#define MSGDATA_SIZE 255
+#define VALUEARRAY_SIZE 15
+
+char senderID[] = "UUID 1";
+char receiverID[] = "UUID 2";
+char ERYTHAEAN[] = "F79721857DC5";
+char GREIGE[] = "89C87865077A";
+char sender[] = "senderID";
+char receiver[] = "receiverID";
+static char messageData[MSGDATA_SIZE + 1];
+static char valuesArray[VALUEARRAY_SIZE]; // 15 bc probably won't do more
+
+int index = 0;
+boolean CRLF2 = false;
+
+char ssid[] = SECRET_SSID;
+char pass[] = SECRET_PASS;
+
+int sendBody = 0;
+
+// separate commands into individual strings
+int numberOfCommands; //number of commands
+char commands[COMMAND_ARRAY_SIZE][CHAR_ARRAY_LENGTH];
+char parameters[PARAMETER_ARRAY_SIZE][CHAR_ARRAY_LENGTH];
+char delimiter_amper = '&';
+char delimiter_equal = '=';
+
+int status = WL_IDLE_STATUS;
+char server[] = "ee31.ece.tufts.edu";  // for Tufts
+int portNumber = 80;   // for Tufts
+
+WiFiClient client;
+
 enum State {YELLOW, RED, BLUE, DARK};
 State color = DARK;
 State prev = DARK;
@@ -72,6 +114,25 @@ void setup() {
 
   //light_based_comm(pin1);
   //horn(pin2);
+  // start up cycle
+  // check for the WiFi module:
+  while (status != WL_CONNECTED) {
+    Serial.print("Attemping to connect to Network named: ");
+    Serial.println(ssid);
+    status = WiFi.begin(ssid, pass);
+  }
+  // end start up cycle
+  Serial.print("SSID: ");
+  Serial.print(WiFi.SSID());
+  IPAddress ip = WiFi.localIP();
+  IPAddress gateway = WiFi.gatewayIP();
+  Serial.print("IP Address: ");
+  Serial.println(ip);
+
+  // Saying WAIT to the other bot
+  char postBody[] = "command=W";
+  char postRoute[] = "POST /F79721857DC5/89C87865077A HTTP/1.1";
+  POSTServer(postRoute, postBody);
   delay(1000);
 }
 
@@ -86,6 +147,12 @@ void loop() {
   }
   
   if(counter == 0){
+
+    // TODO flash blue 3 times
+    brake_lights(pin12);
+    brake_lights(pin12);
+    brake_lights(pin12);
+
     while(collision_absence){
       change_state();
       forward_motion(pin5, pin6, pin10, pin9, power-20, power-20, 100);
@@ -129,6 +196,44 @@ void loop() {
     delay(400);
     State what_to_track = RED;
     line_tracker(what_to_track);
+
+
+    // ********************** POST ***********************
+    Serial.println("Doing POST");
+    char postBody[] = "command=S";
+    // format of postRoute: "POST /senderID/receiverID HTTP/1.1"
+    char postRoute[] = "POST /F79721857DC5/89C87865077A HTTP/1.1";
+    POSTServer(postRoute, postBody);
+
+    valuesArray[3] == 'W';
+    while (valuesArray[3] == 'W') {
+      // ********************** GET ***********************
+      Serial.println("Doing GET");
+      char getRoute[] = "GET /F79721857DC5/89C87865077A HTTP/1.1";
+      GETServer(getRoute);
+      Serial.print("Message: ");
+      Serial.println(messageData);
+      int parsedLength = parseMessage(valuesArray, messageData);
+      valuesArray[parsedLength] = '\0';
+      Serial.print("Values: ");
+      Serial.println(valuesArray);
+      // NO NEED FOR THIS
+      if (valuesArray[3] == 'S') {
+        Serial.println("MOVE");
+      } 
+    }
+    brake_lights(pin12);
+    brake_lights(pin12);
+    brake_lights(pin12);
+
+    // TODO illuminate green LED
+
+    if (!client.connected()) {
+      Serial.println("disconnecting from server.");
+      client.stop();
+      while (true);
+    }
+
     counter += 1;
     delay(300);
     loop();
@@ -145,6 +250,8 @@ void loop() {
     delay(100);
     State what_to_avoid = YELLOW;
     color_avoider(what_to_avoid);
+    horn(pin2);
+    horn(pin2);
     digitalWrite(pin12, HIGH);
     delay(800);
     digitalWrite(pin12, LOW);
@@ -157,6 +264,14 @@ void loop() {
     pivotleft(pin5, pin6, pin10, pin9, power, power, 300);
     State what_to_track = YELLOW;
     line_tracker(what_to_track);
+
+    // ********************** POST ***********************
+    Serial.println("Doing POST");
+    char postBody[] = "command=F";
+    // format of postRoute: "POST /senderID/receiverID HTTP/1.1"
+    char postRoute[] = "POST /F79721857DC5/89C87865077A HTTP/1.1";
+    POSTServer(postRoute, postBody);
+
     counter += 1;
     delay(300);
     loop();
@@ -177,6 +292,19 @@ void loop() {
   change_state();
 }
 
+void flash_brake_and_head(int pin4, int pin12){
+    digitalWrite(pin4, HIGH); //headlights
+    digitalWrite(pin12, HIGH);
+    delay(500);
+    digitalWrite(pin4, LOW);
+    digitalWrite(pin12, LOW);
+    delay(500);
+    digitalWrite(pin4, HIGH); 
+    digitalWrite(pin12, HIGH);
+    delay(500);
+    digitalWrite(pin4, LOW);
+    digitalWrite(pin12, LOW);
+}
 
 //makes the bot move in a straight line and stop whenever it sees a certain color.
 void color_avoider(State COLOR){
@@ -404,6 +532,7 @@ void brake_lights(int pin){
   digitalWrite(pin, HIGH);
   delay(1000);
   digitalWrite(pin, LOW);
+  delay(1000);
 }
 
 void light_based_comm(int pin){
@@ -414,4 +543,98 @@ void light_based_comm(int pin){
     digitalWrite(pin, LOW);
     delayMicroseconds(168);
   }
+}
+
+// POST function doing actual call
+void POSTServer(const char theRoute[], char *bodyMessage) {  
+ if (client.connect(server, portNumber)) {
+
+      Serial.println("POST: Connected to server");
+
+    // Make a HTTP POST request:
+    client.println(theRoute);
+    client.print("Host: ");
+    client.println(server);
+    client.println("Content-Type: application/x-www-form-urlencoded");
+    client.print("Content-Length: ");
+    int postBodyLength = strlen(bodyMessage);
+    client.println(postBodyLength);
+    client.println();
+    client.print(bodyMessage);
+  }
+}
+
+// GET function doing actual call
+void GETServer(const char theRoute[]) {
+      
+      if (client.connect(server, portNumber)) {
+      Serial.println("GET: Connected to server");
+
+      Serial.println("Server connected");
+      
+      // Make a HTTP GET request:
+      client.println(theRoute);
+      client.print("Host: ");
+      client.println(server);
+      client.println("Connection: close");
+      client.println();
+ 
+      delay(150); // need a delay to wait for the server to respond
+      
+      GetMessageBody();  // get the message from the server into an array
+      // if the server's disconnected, stop the client:
+      if (!client.connected()) {
+      Serial.println("disconnecting from server.");
+      Serial.println();
+      client.stop();
+      CRLF2 = false;
+      }
+      
+   }
+}
+
+// read in from the client to the global variable
+void  GetMessageBody() {
+  // the actual message/information starts after the empty line
+  int firstReading = client.read();
+  int secondReading = 0;
+  int index = 0;
+  // client.read() returns -1 when there is no more data
+  while(firstReading != -1) {
+    // 13 = carriage return, 10 = line feed
+    // one after the other means an empty line 
+    //(time to start reading the actual message)
+    if (firstReading == 13 && secondReading == 10) {
+      break; 
+    }
+    secondReading = firstReading;
+    firstReading = client.read();
+  }
+  // reading the actual message
+  while(firstReading != -1 && index < MSGDATA_SIZE) {
+    messageData[index] = firstReading;
+    index++;
+    firstReading = client.read();
+  }
+  messageData[index] = '\0';
+}
+
+// returns the int number of values including initial 3
+int parseMessage(char buff[], char message[]) {
+  // first = senderID, second = receiverID, third = message (Succ/Fail)
+  // following are the values
+  int values = 0;
+  for (int i = 0; i < MSGDATA_SIZE; i++) {
+    // end of the message
+    if (message[i] == '\0') {
+      break;
+    }
+    // start of a value (this assumes each value is just one character)
+    if (message[i] == '=') {
+      buff[values] = message[i+1];
+      values++;
+    }
+  }
+  numberOfCommands = values - 3;
+  return values;
 }
