@@ -7,6 +7,44 @@
 #define CHAR_ARRAY_LENGTH 25
 #define MSGDATA_SIZE 255
 #define VALUEARRAY_SIZE 15
+enum State {YELLOW, RED, BLUE, DARK};
+State color = DARK;
+State prev = DARK;
+
+bool tracking_bool = true;
+bool collision_absence = true;
+
+int pin2 = 2; //horn
+int pin4 = 4; //headlights
+int pin8 = 8;
+int pin3 = 3; //power white light
+int pin12 = 12; //brake lights
+int ambient_light_analog = 0;
+int value = 0;
+
+int val1 = 0;
+
+// motor declarations
+int pivot_period = 1000;
+int turn_period = 1000;
+int power = 80;
+
+// motor pins
+int pin9 = 9;
+int pin10 = 10;
+int pin5 = 5;
+int pin6 = 6;
+
+// enable pins
+int pin13 = 13;
+int pin7 = 7;
+
+int counter = 0;
+
+int value1 = 0;
+int value2 = 0;
+int value3 = 0;
+int value4 = 0;
 
 char senderID[] = "UUID 1";
 char receiverID[] = "UUID 2";
@@ -41,6 +79,29 @@ WiFiClient client;
 
 void setup() {
   Serial.begin(9600);
+   pinMode(pin3, OUTPUT);
+  digitalWrite(pin3, HIGH); // power white LED
+
+  
+
+  // motor setup
+  pinMode(pin13, OUTPUT);
+  pinMode(pin9, OUTPUT);
+  pinMode(pin10, OUTPUT);
+  pinMode(pin5, OUTPUT);
+  pinMode(pin6, OUTPUT);
+  pinMode(pin7, OUTPUT);
+  pinMode(pin8, OUTPUT); //ambient light sensor
+  pinMode(pin4, OUTPUT); //headlights
+  digitalWrite(pin13, HIGH); // enable1 pin
+  digitalWrite(pin7, HIGH); // enable2 pin
+  delay(1000);
+
+  //digitalWrite(pin4, HIGH); //headlights
+  pinMode(pin12, OUTPUT); //brakes
+  //digitalWrite(pin12, HIGH); // power brakes test
+
+  pinMode(pin2, OUTPUT);//horn
   // start up cycle
   // check for the WiFi module:
   while (status != WL_CONNECTED) {
@@ -77,8 +138,33 @@ void loop() {
     Serial.println("WAIT");
   } else if (valuesArray[3] == '5') {
     Serial.println("MOVE");
+    horn(pin2);
+    turnleft(pin5, pin6, pin10, pin9, power, power, 100);
   }
 }
+
+void turnleft(int rightwheel1, int rightwheel2, int leftwheel1, int leftwheel2, int analogright, int analogleft, int period){
+  analogWrite(rightwheel2, analogright/4);
+  analogWrite(rightwheel1, 0);
+  analogWrite(leftwheel2, analogleft);
+  analogWrite(leftwheel1, 0);
+  delay(period);
+  analogWrite(rightwheel1, 0);
+  analogWrite(rightwheel2, 0);
+  analogWrite(leftwheel1, 0);
+  analogWrite(leftwheel2, 0);
+}
+
+void horn(int pin){
+  int i = 0;
+  for(i=0; i<150; i++){
+    digitalWrite(pin, HIGH);
+    delay(5);
+    digitalWrite(pin, LOW);
+    delay(5); 
+  }
+}
+
 // POST function doing actual call
 void POSTServer(const char theRoute[], char *bodyMessage) {  
  if (client.connect(server, portNumber)) {
