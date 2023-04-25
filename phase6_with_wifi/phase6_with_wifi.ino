@@ -8,6 +8,45 @@
 #define MSGDATA_SIZE 255
 #define VALUEARRAY_SIZE 15
 
+enum State {YELLOW, RED, BLUE, DARK};
+State color = DARK;
+State prev = DARK;
+
+bool tracking_bool = true;
+bool collision_absence = true;
+
+int pin2 = 2; //horn
+int pin4 = 4; //headlights
+int pin8 = 8;
+int pin3 = 3; //power white light
+int pin12 = 12; //brake lights
+int ambient_light_analog = 0;
+int value = 0;
+
+int val1 = 0;
+
+// motor declarations
+int pivot_period = 1000;
+int turn_period = 1000;
+int power = 80;
+
+// motor pins
+int pin9 = 9;
+int pin10 = 10;
+int pin5 = 5;
+int pin6 = 6;
+
+// enable pins
+int pin13 = 13;
+int pin7 = 7;
+
+int counter = 0;
+
+int value1 = 0;
+int value2 = 0;
+int value3 = 0;
+int value4 = 0;
+
 char senderID[] = "UUID 1";
 char receiverID[] = "UUID 2";
 char ERYTHAEAN[] = "F79721857DC5";
@@ -44,7 +83,33 @@ WiFiClient client;
 int val = 0;
 int pin11 = 11;
 
+bool is_on = false;
+
 void setup() {
+  Serial.begin(9600);
+  pinMode(pin3, OUTPUT);
+  digitalWrite(pin3, HIGH); // power white LED
+
+  
+
+  // motor setup
+  pinMode(pin13, OUTPUT);
+  pinMode(pin9, OUTPUT);
+  pinMode(pin10, OUTPUT);
+  pinMode(pin5, OUTPUT);
+  pinMode(pin6, OUTPUT);
+  pinMode(pin7, OUTPUT);
+  pinMode(pin8, OUTPUT); //ambient light sensor
+  pinMode(pin4, OUTPUT); //headlights
+  digitalWrite(pin13, HIGH); // enable1 pin
+  digitalWrite(pin7, HIGH); // enable2 pin
+  delay(1000);
+
+  //digitalWrite(pin4, HIGH); //headlights
+  pinMode(pin12, OUTPUT); //brakes
+  //digitalWrite(pin12, HIGH); // power brakes test
+
+  pinMode(pin2, OUTPUT);//horn
   Serial.begin(9600);
   pinMode(LED_BUILTIN, OUTPUT);
   // pinMode(LED, OUTPUT);
@@ -78,20 +143,29 @@ void setup() {
 void loop() {
   val = digitalRead(pin11);
   Serial.println(val);// wait for a second
-  //if (val =)
   if (digitalRead(pin11) == LOW) {
-    // digitalWrite(LED2, HIGH);
-
-    //Saying MOVE 5 SECONDS to the other bot
-    // ********************** POST ***********************
-    Serial.println("Doing POST");
-    char postBody[] = "duration=5";
-    // format of postRoute: "POST /senderID/receiverID HTTP/1.1"
-    char postRoute[] = "POST /F79721857DC5/89C87865077A HTTP/1.1";
-    POSTServer(postRoute, postBody);
-
+    if (!is_on) {
+      pivotleft(pin5, pin6, pin10, pin9, power, power);
+      horn(pin2);
+      // ********************** POST ***********************
+      Serial.println("Doing POST");
+      char postBody[] = "duration=5";
+      // format of postRoute: "POST /senderID/receiverID HTTP/1.1"
+      char postRoute[] = "POST /F79721857DC5/89C87865077A HTTP/1.1";
+      POSTServer(postRoute, postBody);      
+      is_on = true;
+    }
     
+
   } else if (digitalRead(pin11) == HIGH) {
+      stop(pin5, pin6, pin10, pin9, power, power, 1000);
+      // ********************** POST ***********************
+      Serial.println("Doing POST");
+      char postBody[] = "duration=0";
+      // format of postRoute: "POST /senderID/receiverID HTTP/1.1"
+      char postRoute[] = "POST /F79721857DC5/89C87865077A HTTP/1.1";
+      POSTServer(postRoute, postBody);
+      is_on = false;
     Serial.println("Switch is OFF");
   }
   
@@ -100,7 +174,7 @@ void loop() {
     client.stop();
     while (true);
   }
-  delay(150);
+  //delay(150);
 }
 
 // POST function doing actual call
@@ -195,4 +269,29 @@ int parseMessage(char buff[], char message[]) {
   }
   numberOfCommands = values - 3;
   return values;
+}
+
+void pivotleft(int rightwheel1, int rightwheel2, int leftwheel1, int leftwheel2, int analogright, int analogleft){
+  
+  analogWrite(rightwheel2, 0);
+  analogWrite(rightwheel1, analogright);
+  analogWrite(leftwheel2, analogleft);
+  analogWrite(leftwheel1, 0);
+}
+
+void stop(int rightwheel1, int rightwheel2, int leftwheel1, int leftwheel2, int analogright, int analogleft, int period){
+  analogWrite(rightwheel1, 0);
+  analogWrite(rightwheel2, 0);
+  analogWrite(leftwheel2, 0);
+  analogWrite(leftwheel1, 0); 
+}
+
+void horn(int pin){
+  int i = 0;
+  for(i=0; i<150; i++){
+    digitalWrite(pin, HIGH);
+    delay(5);
+    digitalWrite(pin, LOW);
+    delay(5); 
+  }
 }
