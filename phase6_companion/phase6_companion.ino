@@ -77,6 +77,8 @@ int portNumber = 80;   // for Tufts
 
 WiFiClient client;
 
+bool is_on = false;
+
 void setup() {
   Serial.begin(9600);
    pinMode(pin3, OUTPUT);
@@ -122,30 +124,68 @@ void loop() {
   // clears the message data
   memset(messageData, 0, sizeof(messageData));
   memset(valuesArray, 0, 15);
-  
-  // ********************** GET ***********************
-  Serial.println("Doing GET");
-  char getRoute[] = "GET /89C87865077A/F79721857DC5 HTTP/1.1";
-  GETServer(getRoute);
-  Serial.print("Message: ");
-  Serial.println(messageData);
-  int parsedLength = parseMessage(valuesArray, messageData);
-  valuesArray[parsedLength] = '\0';
-  Serial.print("Values: ");
-  Serial.println(valuesArray);
-  
-  if (valuesArray[3] == '0') {
-    Serial.println("WAIT");
-  } else if (valuesArray[3] == '5') {
-    Serial.println("MOVE");
-    horn(pin2);
-    turnleft(pin5, pin6, pin10, pin9, power, power);
+  if (!is_on) {
+    // ********************** GET ***********************
+    Serial.println("Doing GET");
+    char getRoute[] = "GET /89C87865077A/F79721857DC5 HTTP/1.1";
+    GETServer(getRoute);
+    Serial.print("Message: ");
+    Serial.println(messageData);
+    int parsedLength = parseMessage(valuesArray, messageData);
+    valuesArray[parsedLength] = '\0';
+    Serial.print("Values: ");
+    Serial.println(valuesArray);
+    
+    if (valuesArray[3] == '0') {
+      Serial.println("WAIT");
+      stop(pin5, pin6, pin10, pin9, power, power, 1000);
+      is_on = false;
+    } else if (valuesArray[3] == '5') {
+      Serial.println("MOVE");
+      horn(pin2);
+      pivotleft(pin5, pin6, pin10, pin9, power, power);
+      is_on = true;
+    }
   }
+  // clears the message data
+  memset(messageData, 0, sizeof(messageData));
+  memset(valuesArray, 0, 15);
+
+  // ********************** GET ***********************
+    Serial.println("Doing GET");
+    char getRoute[] = "GET /89C87865077A/F79721857DC5 HTTP/1.1";
+    GETServer(getRoute);
+    Serial.print("Message: ");
+    Serial.println(messageData);
+    int parsedLength = parseMessage(valuesArray, messageData);
+    valuesArray[parsedLength] = '\0';
+    Serial.print("Values: ");
+    Serial.println(valuesArray);
+    
+    if (valuesArray[3] == '0') {
+      Serial.println("WAIT");
+      stop(pin5, pin6, pin10, pin9, power, power, 1000);
+      is_on = false;
+    } else if (valuesArray[3] == '5') {
+      Serial.println("MOVE");
+      horn(pin2);
+      pivotleft(pin5, pin6, pin10, pin9, power, power);
+      is_on = true;
+    }
+  
 }
 
 void turnleft(int rightwheel1, int rightwheel2, int leftwheel1, int leftwheel2, int analogright, int analogleft){
   analogWrite(rightwheel2, analogright/4);
   analogWrite(rightwheel1, 0);
+  analogWrite(leftwheel2, analogleft);
+  analogWrite(leftwheel1, 0);
+}
+
+void pivotleft(int rightwheel1, int rightwheel2, int leftwheel1, int leftwheel2, int analogright, int analogleft){
+  
+  analogWrite(rightwheel2, 0);
+  analogWrite(rightwheel1, analogright);
   analogWrite(leftwheel2, analogleft);
   analogWrite(leftwheel1, 0);
 }
