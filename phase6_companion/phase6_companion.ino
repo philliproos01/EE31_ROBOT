@@ -139,20 +139,22 @@ void loop() {
   } else if (valuesArray[3] == '5') {
     Serial.println("MOVE");
     horn(pin2);
-    turnleft(pin5, pin6, pin10, pin9, power, power, 100);
+    turnleft(pin5, pin6, pin10, pin9, power, power);
   }
 }
 
-void turnleft(int rightwheel1, int rightwheel2, int leftwheel1, int leftwheel2, int analogright, int analogleft, int period){
+void turnleft(int rightwheel1, int rightwheel2, int leftwheel1, int leftwheel2, int analogright, int analogleft){
   analogWrite(rightwheel2, analogright/4);
   analogWrite(rightwheel1, 0);
   analogWrite(leftwheel2, analogleft);
   analogWrite(leftwheel1, 0);
-  delay(period);
+}
+
+void stop(int rightwheel1, int rightwheel2, int leftwheel1, int leftwheel2, int analogright, int analogleft, int period){
   analogWrite(rightwheel1, 0);
   analogWrite(rightwheel2, 0);
-  analogWrite(leftwheel1, 0);
   analogWrite(leftwheel2, 0);
+  analogWrite(leftwheel1, 0); 
 }
 
 void horn(int pin){
