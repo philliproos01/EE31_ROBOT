@@ -59,7 +59,6 @@ int val1 = 0;
 // motor declarations
 int pivot_period = 1000;
 int turn_period = 1000;
-int power = 80;
 
 // motor pins
 int pin9 = 9;
@@ -79,6 +78,10 @@ int value3 = 0;
 int value4 = 0;
 
 float calibrate_me = 1400;
+
+int power = 95;
+int power_left = 85;
+int power_right = 75;
 
 
 void setup() {
@@ -116,11 +119,6 @@ void setup() {
   IPAddress gateway = WiFi.gatewayIP();
   Serial.print("IP Address: ");
   Serial.println(ip);
-
-  // Saying WAIT to the other bot
-  char postBody[] = "command=W";
-  char postRoute[] = "POST /F79721857DC5/89C87865077A HTTP/1.1";
-  POSTServer(postRoute, postBody);
 }
 
 void loop() {
@@ -134,41 +132,30 @@ void loop() {
   valuesArray[parsedLength] = '\0';
   Serial.print("Values: ");
   Serial.println(valuesArray);
-  
-  if(counter == 0){
-    forward_motion(pin5, pin6, pin10, pin9, power, power, calibrate_me);
+  if(counter == 0 && valuesArray[3] == 'M'){
+    forward_motion(pin5, pin6, pin10, pin9, power_left, power_right, calibrate_me);
     delay(500);
     pivotleft(pin5, pin6, pin10, pin9, power, power, calibrate_me * 0.70);
     delay(500);
-    backward_motion(pin5, pin6, pin10, pin9, power, power, calibrate_me * 0.25);
+    backward_motion(pin5, pin6, pin10, pin9, power_left, power_right, calibrate_me * 0.25);
     delay(500);
     pivotleft(pin5, pin6, pin10, pin9, power, power, calibrate_me * 0.35);
     delay(500);
-    forward_motion(pin5, pin6, pin10, pin9, power, power, calibrate_me * 0.25);
+    forward_motion(pin5, pin6, pin10, pin9, power_left, power_right, calibrate_me * 0.25);
     delay(500);
     pivotright(pin5, pin6, pin10, pin9, power, power, calibrate_me * 0.35);
     delay(500);
-    forward_motion(pin5, pin6, pin10, pin9, power, power, calibrate_me * 1.4);
+    forward_motion(pin5, pin6, pin10, pin9, power_left, power_right, calibrate_me * 1.4);
     delay(500);
     pivotright(pin5, pin6, pin10, pin9, power, power, calibrate_me * 0.35);
     delay(500);
-    forward_motion(pin5, pin6, pin10, pin9, power, power, calibrate_me * 0.25);
+    forward_motion(pin5, pin6, pin10, pin9, power_left, power_right, calibrate_me * 0.25);
     delay(500);
     pivotright(pin5, pin6, pin10, pin9, power, power, calibrate_me * 0.35);
     delay(500);
-    forward_motion(pin5, pin6, pin10, pin9, power, power, calibrate_me * 0.25);
+    forward_motion(pin5, pin6, pin10, pin9, power_left, power_right, calibrate_me * 0.25);
     delay(500);
-    counter += 1;    
-  }
-
-  if(counter >= 1){
-    //send wifi;
-    // ********************** POST ***********************
-    Serial.println("Doing POST");
-    char postBody[] = "command=M";
-    // format of postRoute: "POST /senderID/receiverID HTTP/1.1"
-    char postRoute[] = "POST /F79721857DC5/89C87865077A HTTP/1.1";
-    POSTServer(postRoute, postBody);
+    counter += 1;
   }
 }
 
