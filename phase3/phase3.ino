@@ -41,9 +41,9 @@ void setup() {
 void loop() {
   value = analogRead(A1) ;
   change_state();
-  // Serial.println(color);
-  State what_to_track = color;
-  line_tracker(what_to_track);
+  // // Serial.println(color);
+  // State what_to_track = color;
+  // line_tracker(what_to_track);
   // value = analogRead(A1);
   // int val = value;
   // Serial.println(val);
@@ -78,6 +78,7 @@ void line_tracker(State COLOR) {
 
 void change_state() {
   value = analogRead(A1);
+  Serial.println(value);
   if((value < 500)) {
     color = DARK;
   } else if((500 < value) and (value < 600)) {
