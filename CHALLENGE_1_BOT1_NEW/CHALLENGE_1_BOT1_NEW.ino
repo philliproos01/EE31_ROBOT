@@ -13,8 +13,11 @@
 #define GREIGE 89C87865077A
 
 // *********************************** CALIBRATION **************************************
-float calibrate_me = 1000;
-int collision_threshold = 850;
+float calibrate_me = 800;
+// decrease to make it more sensitive
+int collision_threshold = 600;
+int calibrate_collision = 500;
+int recalibrate_collision = 600;
 
 // ************************************** WIFI ******************************************
 static char messageData[MSGDATA_SIZE + 1];
@@ -60,10 +63,11 @@ int headlight_pin = 4; // headlights
 int brake_pin = 12; // brake lights
 int white_LED_pin = 3; // power whitelight
 int ambient_light_analog = 0;
+int light_comm_pin = 1;
 
 // *************************************** MOTOR *****************************************
-int turn_period = 1000;
-int power = 80;
+int turn_period = 1200;
+int power = 70;
 
 // motor pin setup
 int pin9 = 9;
@@ -74,6 +78,11 @@ int pin6 = 6;
 // enable pins
 int pin13 = 13;
 int pin7 = 7;
+
+// LED pins: blue and yellow
+int pin0 = 0;
+int pin11 = 11;
+
 
 int counter = 0;
 
@@ -94,7 +103,12 @@ void setup() {
   pinMode(headlight_pin, OUTPUT); //headlights
   digitalWrite(pin13, HIGH); // enable1 pin
   digitalWrite(pin7, HIGH); // enable2 pin
-  delay(1000);
+  delay(100);
+
+
+  pinMode(pin11, OUTPUT);
+  pinMode(pin0, OUTPUT);
+
 
   pinMode(brake_pin, OUTPUT); //brakes
 
@@ -123,95 +137,102 @@ void setup() {
 // *************************************** LOOP ****************************************
 void loop() {
   if(counter == 0){
+    collision_threshold = calibrate_collision;
     // MOVE FORWARD UNTIL SEEING WALL
     // **********************************************************************
     while(no_collision){
       change_state();
       forward_motion(pin5, pin6, pin10, pin9, power, power, 100);
     }
+    collision_threshold = recalibrate_collision;
     delay(1000);
     
     // PIVOT RIGHT TO TURN ABOUT 160 degrees
     // **********************************************************************
-    pivotright(pin5, pin6, pin10, pin9, power, power, calibrate_me);
+    pivotright(pin5, pin6, pin10, pin9, power, power, calibrate_me * 1.20);
     delay(1000);
 
     // MOVE FORWARD UNTIL SEEING RED
     // **********************************************************************
-    color = DARK;
-    while(color != RED){
-      change_state();
-      forward_motion(pin5, pin6, pin10, pin9, power, power, 100);
-    }
+    color_avoider(RED);
     delay(1000);
 
     // TRACK RED LINE UNTIL SEEING WALL
     // **********************************************************************
-    // The stop function will be called when change_state sees a collision
+    pivotleft(pin5, pin6, pin10, pin9, power, power, calibrate_me * 1.40);
+    delay(300);
+    light_based_comm(light_comm_pin);
+    delay(300);
+    // ********************** POST ***********************
+    Serial.println("Doing POST");
+    char postBody[] = "command=M";
+    // format of postRoute: "POST /senderID/receiverID HTTP/1.1"
+    char postRoute[] = "POST /F79721857DC5/89C87865077A HTTP/1.1";
+    POSTServer(postRoute, postBody);
+    delay(1000);
+    headlights(headlight_pin);
+
+    pivotright(pin5, pin6, pin10, pin9, power, power, calibrate_me * 1.20);
     line_tracker(RED);
     delay(1000);
 
     // TURN LEFT AROUND 90 DEGREES
     // **********************************************************************
-    pivotleft(pin5, pin6, pin10, pin9, power, power, calibrate_me * 0.40);
+    pivotleft(pin5, pin6, pin10, pin9, power, power, calibrate_me * 0.90);
     delay(1000);
 
     // MOVE FORWARD UNTIL SEEING YELLOW
     // **********************************************************************
-    start_forward_motion(pin5, pin6, pin10, pin9, power, power);
-    color = DARK;
-    while(color != YELLOW){
-      change_state();
-      forward_motion(pin5, pin6, pin10, pin9, power, power, 100);
-    }
+    color_avoider(YELLOW);
     delay(1000);
+    digitalWrite(pin11, HIGH);
+    delay(500);
+    digitalWrite(pin11, LOW);
+
 
 
     // TRACK YELLOW LINE UNTIL SEEING WALL
     // **********************************************************************
-    line_tracker(YELLOW);
+    forward_motion(pin5, pin6, pin10, pin9, power, power, calibrate_me * 0.10);
+    pivotleft(pin5, pin6, pin10, pin9, power, power, calibrate_me * 0.10);
     delay(1000);
+    line_tracker(YELLOW);
+    delay(4000); //changed from 1000 to 3000
+    // ********************** POST ***********************
+    Serial.println("Doing POST");
+    char postBody2[] = "command=S";
+    // format of postRoute: "POST /senderID/receiverID HTTP/1.1"
+    POSTServer(postRoute, postBody2);
+    delay(1000);
+    headlights(headlight_pin);
 
     // TURN LEFT AROUND 90 DEGREES
     // **********************************************************************
-    pivotleft(pin5, pin6, pin10, pin9, power, power, calibrate_me * 0.40);
+    pivotleft(pin5, pin6, pin10, pin9, power, power, calibrate_me * 0.60);
     delay(1000);
 
 
     // MOVE FORWARD UNTIL SEEING WALL
     // **********************************************************************
-    start_forward_motion(pin5, pin6, pin10, pin9, power, power);
-    while(no_collision){
-      change_state();
-      forward_motion(pin5, pin6, pin10, pin9, power, power, 100);
-    }
+    forward_motion(pin5, pin6, pin10, pin9, power, power, 1300);
     delay(1000);
+    counter += 1;
   }
-
-  // if(counter >= 1){
-  //   //send wifi;
-  //   // ********************** POST ***********************
-  //   Serial.println("Doing POST");
-  //   char postBody[] = "command=M";
-  //   // format of postRoute: "POST /senderID/receiverID HTTP/1.1"
-  //   char postRoute[] = "POST /F79721857DC5/89C87865077A HTTP/1.1";
-  //   POSTServer(postRoute, postBody);
-  // }
 }
 
-
-// //makes the bot move in a straight line and stop whenever it sees a certain color.
-// void color_avoider(State COLOR){
-//   int power = 80;
-//   while(color != COLOR){
-//     forward_motion(pin5, pin6, pin10, pin9, power, power, 40);
-//     change_state();
-//   }
-//   return;
-// }
-  
-
-
+//makes the bot move in a straight line and stop whenever it sees a certain color.
+void color_avoider(State COLOR){
+  int counting = 0;
+  int power = 100;
+  while(color != COLOR){
+    forward_motion(pin5, pin6, pin10, pin9, power, power, 40);
+    if (counting % 7 == 0){
+      change_state();
+    }
+    counting += 1;
+  }
+  return;
+}
 
 void line_tracker(State COLOR) {
   int power = 80;
@@ -417,6 +438,16 @@ void brake_lights(int pin){
   digitalWrite(pin, HIGH);
   delay(800);
   digitalWrite(pin, LOW);
+}
+
+void light_based_comm(int pin){
+  int i = 0;
+  for(i = 0; i < 1000; i++){
+    digitalWrite(pin, HIGH);
+    delayMicroseconds(160);
+    digitalWrite(pin, LOW);
+    delayMicroseconds(160);
+  }
 }
 
 // POST function doing actual call

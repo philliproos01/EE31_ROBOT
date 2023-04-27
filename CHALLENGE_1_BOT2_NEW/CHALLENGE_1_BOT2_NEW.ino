@@ -1,3 +1,4 @@
+// ********************************* CHALLENGE 1 BOT 2 *********************************
 #include <SPI.h>
 #include <WiFiNINA.h>
 
@@ -8,23 +9,27 @@
 #define CHAR_ARRAY_LENGTH 25
 #define MSGDATA_SIZE 255
 #define VALUEARRAY_SIZE 15
+#define ERYTHAEAN F79721857DC5
+#define GREIGE 89C87865077A
 
-char senderID[] = "UUID 1";
-char receiverID[] = "UUID 2";
-char ERYTHAEAN[] = "F79721857DC5";
-char GREIGE[] = "89C87865077A";
-char sender[] = "senderID";
-char receiver[] = "receiverID";
+// *********************************** CALIBRATION **************************************
+float calibrate_me = 1000;
+int collision_threshold = 250;
+int calibrate_collision = 150;
+int recalibrate_collision = 250;
+
+// ************************************** LIGHT *****************************************
+int light = 0; //light-based communication
+
+// ************************************** WIFI ******************************************
 static char messageData[MSGDATA_SIZE + 1];
-static char valuesArray[VALUEARRAY_SIZE]; // 15 bc probably won't do more
+static char valuesArray[VALUEARRAY_SIZE];
 
 int index = 0;
 boolean CRLF2 = false;
 
 char ssid[] = SECRET_SSID;
 char pass[] = SECRET_PASS;
-
-int sendBody = 0;
 
 // separate commands into individual strings
 int numberOfCommands; //number of commands
@@ -34,33 +39,41 @@ char delimiter_amper = '&';
 char delimiter_equal = '=';
 
 int status = WL_IDLE_STATUS;
-char server[] = "ee31.ece.tufts.edu";  // for Tufts
-int portNumber = 80;   // for Tufts
+char server[] = "ee31.ece.tufts.edu";
+int portNumber = 80;
 
 WiFiClient client;
 
+// ************************************** COLOR ******************************************
 enum State {YELLOW, RED, BLUE, DARK};
 State color = DARK;
 State prev = DARK;
-
 bool tracking_bool = true;
-bool collision_absence = true;
+int color_value = 0;
 
-int pin2 = 2; //horn
-int pin4 = 4; //headlights
+
+// ************************************** COLLISION **************************************
+bool no_collision = true;
+int collision_value = 0;
+
+// ************************************** AMBIENT ****************************************
 int pin8 = 8;
-int pin3 = 3; //power white light
-int pin12 = 12; //brake lights
+
+// ************************************** PIN SETUP **************************************
+int horn_pin = 2; // horn
+int headlight_pin = 4; // headlights
+int brake_pin = 12; // brake lights
+int white_LED_pin = 3; // power whitelight
 int ambient_light_analog = 0;
-int value = 0;
+int light_comm_pin = 1;
 
-int val1 = 0;
-
-// motor declarations
-int pivot_period = 1000;
+// *************************************** MOTOR *****************************************
 int turn_period = 1000;
+int power = 80;
+int power_left = 85;
+int power_right = 75;
 
-// motor pins
+// motor pin setup
 int pin9 = 9;
 int pin10 = 10;
 int pin5 = 5;
@@ -70,26 +83,19 @@ int pin6 = 6;
 int pin13 = 13;
 int pin7 = 7;
 
+// LED pins: blue and yellow
+int pin0 = 0;
+int pin11 = 11;
+
 int counter = 0;
 
-int value1 = 0;
-int value2 = 0;
-int value3 = 0;
-int value4 = 0;
-
-float calibrate_me = 1400;
-
-int power = 95;
-int power_left = 85;
-int power_right = 75;
-
-
+// *************************************** SETUP *****************************************
 void setup() {
   Serial.begin(9600);
-  pinMode(pin3, OUTPUT);
-  digitalWrite(pin3, HIGH); // power white LED
+  pinMode(white_LED_pin, OUTPUT);
+  digitalWrite(white_LED_pin, HIGH); // power white LED
 
-  // motor setup
+  // MOTOR SETUP
   pinMode(pin13, OUTPUT);
   pinMode(pin9, OUTPUT);
   pinMode(pin10, OUTPUT);
@@ -97,14 +103,18 @@ void setup() {
   pinMode(pin6, OUTPUT);
   pinMode(pin7, OUTPUT);
   pinMode(pin8, OUTPUT); //ambient light sensor
-  pinMode(pin4, OUTPUT); //headlights
+  pinMode(headlight_pin, OUTPUT); //headlights
   digitalWrite(pin13, HIGH); // enable1 pin
   digitalWrite(pin7, HIGH); // enable2 pin
-  delay(1000);
+  delay(100);
 
-  pinMode(pin12, OUTPUT); //brakes
+  pinMode(brake_pin, OUTPUT); //brakes
 
-  pinMode(pin2, OUTPUT);//horn
+
+  pinMode(pin11, OUTPUT);
+  pinMode(pin0, OUTPUT);
+
+  pinMode(horn_pin, OUTPUT);//horn
   // start up cycle
   // check for the WiFi module:
   while (status != WL_CONNECTED) {
@@ -112,191 +122,219 @@ void setup() {
     Serial.println(ssid);
     status = WiFi.begin(ssid, pass);
   }
-  // end start up cycle
-  Serial.print("SSID: ");
-  Serial.print(WiFi.SSID());
-  IPAddress ip = WiFi.localIP();
-  IPAddress gateway = WiFi.gatewayIP();
-  Serial.print("IP Address: ");
-  Serial.println(ip);
 }
 
+// *************************************** LOOP ****************************************
 void loop() {
-  // ********************** GET ***********************
-  Serial.println("Doing GET");
-  char getRoute[] = "GET /89C87865077A/F79721857DC5 HTTP/1.1";
-  GETServer(getRoute);
-  Serial.print("Message: ");
-  Serial.println(messageData);
-  int parsedLength = parseMessage(valuesArray, messageData);
-  valuesArray[parsedLength] = '\0';
-  Serial.print("Values: ");
-  Serial.println(valuesArray);
-  if(counter == 0 && valuesArray[3] == 'M'){
-    forward_motion(pin5, pin6, pin10, pin9, power_left, power_right, calibrate_me);
+  valuesArray[3] == 'W';
+  while (valuesArray[3] != 'M') {
+    delay(1000);
+    // ********************** GET ***********************
+    Serial.println("Doing GET");
+    char getRoute[] = "GET /89C87865077A/F79721857DC5 HTTP/1.1";
+    GETServer(getRoute);
+    Serial.print("Message: ");
+    Serial.println(messageData);
+    int parsedLength = parseMessage(valuesArray, messageData);
+    valuesArray[parsedLength] = '\0';
+    Serial.print("Values: ");
+    Serial.println(valuesArray);
+  }
+
+  if (counter == 0 && valuesArray[3] == 'M') {
+    headlights(headlight_pin);
+    delay(4000);
+    collision_threshold = calibrate_collision;
+    // MOVE FORWARD UNTIL SEEING WALL
+    // **********************************************************************
+    while(no_collision){
+      change_state();
+      forward_motion(pin5, pin6, pin10, pin9, power_left, power_right, 100);
+    }
+    collision_threshold = recalibrate_collision;
+    delay(1000);
+
+    while (valuesArray[3] != 'S') {
+      delay(1000);
+      // ********************** GET ***********************
+      Serial.println("Doing GET");
+      char getRoute[] = "GET /89C87865077A/F79721857DC5 HTTP/1.1";
+      GETServer(getRoute);
+      Serial.print("Message: ");
+      Serial.println(messageData);
+      int parsedLength = parseMessage(valuesArray, messageData);
+      valuesArray[parsedLength] = '\0';
+      Serial.print("Values: ");
+      Serial.println(valuesArray);
+    }
+    headlights(headlight_pin);
+    
+    // PIVOT LEFT TO TURN ABOUT 160 degrees
+    // **********************************************************************
+    pivotleft(pin5, pin6, pin10, pin9, power_left, power_right, calibrate_me * 1.20);
+    delay(1000);
+
+    // MOVE FORWARD UNTIL SEEING BLUE
+    // **********************************************************************
+    color_avoider(BLUE);
+    delay(1000);
+    digitalWrite(pin0, HIGH);
     delay(500);
-    pivotleft(pin5, pin6, pin10, pin9, power, power, calibrate_me * 0.70);
-    delay(500);
-    backward_motion(pin5, pin6, pin10, pin9, power_left, power_right, calibrate_me * 0.25);
-    delay(500);
-    pivotleft(pin5, pin6, pin10, pin9, power, power, calibrate_me * 0.35);
-    delay(500);
-    forward_motion(pin5, pin6, pin10, pin9, power_left, power_right, calibrate_me * 0.25);
-    delay(500);
-    pivotright(pin5, pin6, pin10, pin9, power, power, calibrate_me * 0.35);
-    delay(500);
-    forward_motion(pin5, pin6, pin10, pin9, power_left, power_right, calibrate_me * 1.4);
-    delay(500);
-    pivotright(pin5, pin6, pin10, pin9, power, power, calibrate_me * 0.35);
-    delay(500);
-    forward_motion(pin5, pin6, pin10, pin9, power_left, power_right, calibrate_me * 0.25);
-    delay(500);
-    pivotright(pin5, pin6, pin10, pin9, power, power, calibrate_me * 0.35);
-    delay(500);
-    forward_motion(pin5, pin6, pin10, pin9, power_left, power_right, calibrate_me * 0.25);
-    delay(500);
+    digitalWrite(pin0, LOW);
+
+    // TRACK BLUE LINE UNTIL SEEING WALL
+    // **********************************************************************
+    pivotright(pin5, pin6, pin10, pin9, power_left, power_right, calibrate_me * 0.40);
+    line_tracker(BLUE);
+    delay(1000);
+
+    // TURN RIGHT AROUND 90 DEGREES
+    // **********************************************************************
+    pivotright(pin5, pin6, pin10, pin9, power_left, power_right, calibrate_me * 0.70);
+    delay(1000);
+
+    // MOVE FORWARD UNTIL SEEING YELLOW
+    // **********************************************************************
+    color_avoider(YELLOW);
+    delay(1000);
+
+
+    // TRACK YELLOW LINE UNTIL SEEING WALL
+    // **********************************************************************
+    forward_motion(pin5, pin6, pin10, pin9, power_left, power_right, calibrate_me * 0.10);
+    pivotright(pin5, pin6, pin10, pin9, power_left, power_right, calibrate_me * 0.40);
+
+    line_tracker(YELLOW);
+    delay(1000);
+
+    // TURN RIGHT AROUND 90 DEGREES
+    // **********************************************************************
+    pivotright(pin5, pin6, pin10, pin9, power_left, power_right, calibrate_me * 0.80);
+    delay(1000);
+
+
+    // MOVE FORWARD UNTIL SEEING WALL
+    // **********************************************************************
+    forward_motion(pin5, pin6, pin10, pin9, power_left, power_right, 1300);
+    delay(1000);
     counter += 1;
   }
 }
 
+//makes the bot move in a straight line and stop whenever it sees a certain color.
+void color_avoider(State COLOR){
+  int counting = 0;
+  int power = 100;
+  while(color != COLOR){
+    forward_motion(pin5, pin6, pin10, pin9, power_left, power_right, 40);
+    if (counting % 7 == 0){
+      change_state();
+    }
+    counting += 1;
+  }
+  return;
+}
 
-// //makes the bot move in a straight line and stop whenever it sees a certain color.
-// void color_avoider(State COLOR){
-//   int power = 80;
-//   while(color != COLOR){
-//     forward_motion(pin5, pin6, pin10, pin9, power, power, 40);
-//     change_state();
-//   }
-//   return;
-// }
-  
-
-
-
-// void line_tracker(State COLOR) {
-//   int power = 80;
-//   turn_period = 20;
-//   while(tracking_bool) {
-//     change_state();
+void line_tracker(State COLOR) {
+  int power = 80;
+  turn_period = 20;
+  while(tracking_bool) {
+    change_state();
     
-//     while ((color == COLOR) && tracking_bool && collision_absence ) {
-//       turnright(pin5, pin6, pin10, pin9, power, power, turn_period);
-//       change_state();
-//     }
+    while ((color == COLOR) && tracking_bool && no_collision ) {
+      turnright(pin5, pin6, pin10, pin9, power_left, power_right, turn_period);
+      change_state();
+    }
     
-//     while ((color != COLOR) && tracking_bool && collision_absence) {
-//       turnleft(pin5, pin6, pin10, pin9, power, power, turn_period);
-//       change_state();
-//     }
+    while ((color != COLOR) && tracking_bool && no_collision) {
+      turnleft(pin5, pin6, pin10, pin9, power_left, power_right, turn_period);
+      change_state();
+    }
 
-//     while ((color == COLOR) && tracking_bool && collision_absence) {
-//       turnleft(pin5, pin6, pin10, pin9, power, power, turn_period);
-//       change_state();
-//     }
+    while ((color == COLOR) && tracking_bool && no_collision) {
+      turnleft(pin5, pin6, pin10, pin9, power_left, power_right, turn_period);
+      change_state();
+    }
 
-//     while ((color != COLOR) && tracking_bool && collision_absence) {
-//       turnright(pin5, pin6, pin10, pin9, power, power, turn_period);
-//       change_state();
-//     }
-//   }
-// }
+    while ((color != COLOR) && tracking_bool && no_collision) {
+      turnright(pin5, pin6, pin10, pin9, power_left, power_right, turn_period);
+      change_state();
+    }
+    if (!no_collision) {
+      return;
+    }
+  }
+}
 
-// void change_state() {
-//   collision_absence = true;
-//   //color sensing
-//   prev = color;
-//   value1 = analogRead(A1);
-//   value2 = analogRead(A1);
-//   value3 = analogRead(A1);
-//   value4 = analogRead(A1);
+void change_state() {
+  no_collision = true;
+  //color sensing
+  prev = color;
+  color_value = analogRead(A1);
 
-// //  if(value1 == value2 and value2 == value3 and value3 == value4){
-// //    value = value1;
-// //  }
-//   value = value1;
-//  //3rd color sensor Greige
-//   //delay(300);
-//   if((value < 65)) {
-//     color = DARK;
-//   } else if((65 < value) and (value < 80)) {
-//     color = BLUE;
-//   } else if((80 < value) and (value < 110)) {
-//     color = RED;
-//   } else if(110 < value) {
-//     color = YELLOW;
-//   }
-// //  
-//   if (prev == YELLOW && color == BLUE) {
-//     color = YELLOW;
-//   }
-//   delay(3);
-//   Serial.print("COLOR = ");
-// //  Serial.print(value);
-//   Serial.println(color);
-//   //collision sys
-//   collision_sense();
-//   if(collision_absence == false){
-//     counter += 1;
-//     loop();
-//   }
-// //  Serial.println(counter);
-//   //ambient light sensing
-//   ambient_light_sense();
+  if((color_value < 55)) {
+    color = DARK;
+  } else if((55 < color_value) and (color_value < 69)) {
+    color = BLUE;
+  } else if((69 < color_value) and (color_value < 100)) {
+    color = RED;
+  } else if(100 < color_value) {
+    color = YELLOW;
+  }
 
-// //  if(collision_absence == false){
-// //    digitalWrite(pin12, HIGH);
-// //  }
-// //  if(collision_absence == true){
-// //    digitalWrite(pin12, LOW);
-// //  }
-
-// }
+  if (prev == YELLOW && color == BLUE) {
+    color = YELLOW;
+  }
+  delay(3);
+  // collision sensing while changing state
+  collision_sense();
+  ambient_light_sense();
+}
 
 
-// void ambient_light_sense(){
-//   ambient_light_analog = analogRead(A0);
-//   Serial.print("Analog reading: ");
-//   Serial.println(ambient_light_analog);
-//   if (ambient_light_analog > 7) {
-//     digitalWrite(8, LOW);
-//   } else if (ambient_light_analog < 7) {
-//     digitalWrite(8, HIGH);
-//     //tracking_bool = false;
-//   } 
-// }
+void ambient_light_sense(){
+  ambient_light_analog = analogRead(A0);
+  Serial.print("Analog reading: ");
+  Serial.println(ambient_light_analog);
+  if (ambient_light_analog > 7) {
+    digitalWrite(8, LOW);
+  } else if (ambient_light_analog < 7) {
+    digitalWrite(8, HIGH);
+  }
+}
 
-// void collision_sense(){
-// //  Serial.println(collision_absence);
-//   //val1 = 0;
-//   val1 = analogRead(A2);
-//   Serial.println(val1);
+void collision_sense(){
+  collision_value = analogRead(A2);
+  if (collision_value >= collision_threshold) {
+    no_collision = false;
+    digitalWrite(brake_pin, HIGH); // brake lights
+  } else {
+    no_collision = true;
+    digitalWrite(brake_pin, LOW); // brake lights
+  }
+}
 
-  
-//   if (val1 <= 670) {
-//     val1 = analogRead(A2);
-//     //Serial.print("LOW");    // sets the output pin initially to LOW
-//     //Serial.println(val1); 
-//     collision_absence = false;
-//     digitalWrite(pin12, HIGH); //brake lights
-      
-//     //if(counter == 0){  
-//       //flash_headlights(pin4);
-//       //horn(pin2);
-//     //}
-//     //counter = 5;
-// //  Serial.println(val1);
-//   }
-//   if (val1 >= 670) {
-//     val1 = analogRead(A2);
-//     //Serial.println(val1);
-//     //Serial.print("HIGH");    // sets output pin HIGH to activate special effects
-//    // delay(1000);  // waits for a second
-//     collision_absence = true;
-//     digitalWrite(pin12, LOW); //brake lights
-// //    Serial.println(val1);
-//   }
-//   Serial.println(val1);
-// }
+void start_forward_motion(int rightwheel1, int rightwheel2, int leftwheel1, int leftwheel2, int analogright, int analogleft){
+  analogWrite(rightwheel2, analogright);
+  analogWrite(rightwheel1, 0);
+  analogWrite(leftwheel2, analogleft);
+  analogWrite(leftwheel1, 0);
+}
+
+void start_pivotleft(int rightwheel1, int rightwheel2, int leftwheel1, int leftwheel2, int analogright, int analogleft){
+  analogWrite(rightwheel2, 0);
+  analogWrite(rightwheel1, analogright);
+  analogWrite(leftwheel2, analogleft);
+  analogWrite(leftwheel1, 0);
+}
+
+void stop(int rightwheel1, int rightwheel2, int leftwheel1, int leftwheel2, int analogright, int analogleft){
+  analogWrite(rightwheel1, 0);
+  analogWrite(rightwheel2, 0);
+  analogWrite(leftwheel2, 0);
+  analogWrite(leftwheel1, 0); 
+}
+
 
 // motor control functions
 void backward_motion(int rightwheel1, int rightwheel2, int leftwheel1, int leftwheel2, int analogright, int analogleft, int period){
@@ -372,38 +410,36 @@ void turnleft(int rightwheel1, int rightwheel2, int leftwheel1, int leftwheel2, 
   analogWrite(leftwheel2, 0);
 }
 
-// void horn(int pin){
-//   int i = 0;
-//   for(i=0; i<150; i++){
-//     digitalWrite(pin, HIGH);
-//     delay(5);
-//     digitalWrite(pin, LOW);
-//     delay(5); 
-//   }
-// }
+void horn(int pin){
+  int i = 0;
+  for(i=0; i<150; i++){
+    digitalWrite(pin, HIGH);
+    delay(5);
+    digitalWrite(pin, LOW);
+    delay(5); 
+  }
+}
 
 
-// void flash_headlights(int pin){
-//   int i = 0;
-//   for(i=0; i<2; i++){
-//     digitalWrite(pin, HIGH);
-//     delay(300);
-//     digitalWrite(pin, LOW);
-//     delay(500); 
-  
-//     digitalWrite(pin, HIGH);
-//     delay(300);
-//     digitalWrite(pin, LOW);
-//     delay(300); 
-//   }
- 
-// }
+void headlights(int pin){
+  int i = 0;
+  for(i=0; i<2; i++){
+    digitalWrite(pin, HIGH);
+    delay(300);
+    digitalWrite(pin, LOW);
+    delay(500);
+    digitalWrite(pin, HIGH);
+    delay(300);
+    digitalWrite(pin, LOW);
+    delay(300); 
+  }
+}
 
-// void brake_lights(int pin){
-//   digitalWrite(pin, HIGH);
-//   delay(800);
-//   digitalWrite(pin, LOW);
-// }
+void brake_lights(int pin){
+  digitalWrite(pin, HIGH);
+  delay(800);
+  digitalWrite(pin, LOW);
+}
 
 // POST function doing actual call
 void POSTServer(const char theRoute[], char *bodyMessage) {  
@@ -459,11 +495,7 @@ void  GetMessageBody() {
   int firstReading = client.read();
   int secondReading = 0;
   int index = 0;
-  // client.read() returns -1 when there is no more data
   while(firstReading != -1) {
-    // 13 = carriage return, 10 = line feed
-    // one after the other means an empty line 
-    //(time to start reading the actual message)
     if (firstReading == 13 && secondReading == 10) {
       break; 
     }

@@ -193,7 +193,7 @@ void change_state() {
 //  }
   delay(10);
   Serial.print("COLOR = ");
-  Serial.print(value);
+  Serial.print(value + "  :  ");
   Serial.println(color);
   //collision sys
   collision_sense();
